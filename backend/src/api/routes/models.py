@@ -4,6 +4,8 @@ Models Routes
 Handles endpoints for listing and inspecting available models.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from src.core.logging import get_logger
@@ -129,3 +131,63 @@ async def unload_model(model_id: str) -> dict[str, str]:
             status_code=500,
             detail=f"Failed to unload model: {e}",
         )
+
+
+@router.post("/pull/{model_id:path}")
+async def pull_model(model_id: str) -> dict[str, Any]:
+    """
+    Pull a model from the Ollama registry.
+    
+    Downloads the model if not already present.
+    
+    Args:
+        model_id: Model to pull (e.g., 'llama3.2:latest').
+    
+    Returns:
+        Status message with pull result.
+    """
+    logger.info("Pulling model", model_id=model_id)
+    
+    runner = get_model_runner()
+    
+    # Access the Ollama adapter directly for pull functionality
+    adapter = runner._adapters.get("ollama")
+    if not adapter:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama backend not available",
+        )
+    
+    try:
+        success = await adapter.pull_model(model_id)
+        if success:
+            return {"status": "pulled", "model_id": model_id}
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to pull model: {model_id}",
+            )
+    except Exception as e:
+        logger.error("Failed to pull model", model_id=model_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to pull model: {e}",
+        )
+
+
+@router.get("/health")
+async def models_health() -> dict[str, Any]:
+    """
+    Check health of model backends.
+    
+    Returns status of all configured backends.
+    """
+    runner = get_model_runner()
+    backends = await runner.check_backends()
+    
+    all_healthy = all(backends.values())
+    
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "backends": backends,
+    }

@@ -110,6 +110,22 @@ class EvaluationError(LentraException):
         )
 
 
+class ModelTimeoutError(LentraException):
+    """Raised when model generation times out."""
+
+    def __init__(
+        self,
+        model_id: str,
+        timeout: float,
+        message: str | None = None,
+    ) -> None:
+        super().__init__(
+            message=message or f"Model '{model_id}' timed out after {timeout}s",
+            status_code=504,
+            details={"model_id": model_id, "timeout": timeout},
+        )
+
+
 class RateLimitExceededError(LentraException):
     """Raised when rate limit is exceeded."""
 

@@ -186,8 +186,8 @@ docker-compose -f docker/docker-compose.yml up --build
 ## 🛣️ Roadmap
 
 - [x] Project scaffolding
-- [ ] Ollama adapter implementation
-- [ ] Basic RAG with FAISS
+- [x] Ollama adapter implementation
+- [x] Basic RAG with FAISS
 - [ ] Side-by-side comparison UI
 - [ ] Evaluation strategies
 - [ ] Character/avatar system
