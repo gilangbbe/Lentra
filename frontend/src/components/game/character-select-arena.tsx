@@ -5,6 +5,7 @@
  * 
  * A game-style character selection screen that displays all available
  * LLM models as selectable characters with stunning visual effects.
+ * Users can assign a 3D character to represent each LLM model.
  */
 
 import { useState, useEffect } from "react";
@@ -13,6 +14,8 @@ import { Swords, Users, Sparkles } from "lucide-react";
 import { useModels } from "@/hooks/use-models";
 import { CharacterCard } from "./character-card";
 import { FloatingIslandScene } from "./floating-island-scene";
+import { CharacterPicker } from "./character-picker";
+import { useCharacterAssignmentStore } from "@/stores/character-assignment-store";
 import { cn } from "@/lib/utils";
 
 interface CharacterSelectArenaProps {
@@ -30,14 +33,43 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
     fetchModels,
   } = useModels();
 
+  const { assignments } = useCharacterAssignmentStore();
   const [mounted, setMounted] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedModelForPicker, setSelectedModelForPicker] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Handle model card click - open character picker
+  const handleModelSelect = (modelId: string, modelName: string) => {
+    // If already selected and has character, toggle off
+    if (selectedModelIds.includes(modelId) && assignments[modelId]) {
+      toggleModel(modelId);
+      return;
+    }
+    // Open character picker for new selection or to change character
+    setSelectedModelForPicker({ id: modelId, name: modelName });
+    setPickerOpen(true);
+  };
+
+  // Handle picker close
+  const handlePickerClose = () => {
+    // If user selected a character, also select the model
+    if (selectedModelForPicker && assignments[selectedModelForPicker.id]) {
+      if (!selectedModelIds.includes(selectedModelForPicker.id)) {
+        toggleModel(selectedModelForPicker.id);
+      }
+    }
+    setPickerOpen(false);
+    setSelectedModelForPicker(null);
+  };
+
   const selectedCount = selectedModelIds.length;
-  const canStartBattle = selectedCount >= 1;
+  // Can only start battle if all selected models have character assignments
+  const allSelectedHaveCharacters = selectedModelIds.every((id) => assignments[id]);
+  const canStartBattle = selectedCount >= 1 && allSelectedHaveCharacters;
 
   return (
     <div className={cn("relative min-h-screen overflow-hidden", className)}>
@@ -147,7 +179,8 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
                 key={model.id}
                 model={model}
                 isSelected={selectedModelIds.includes(model.id)}
-                onSelect={() => toggleModel(model.id)}
+                onSelect={() => handleModelSelect(model.id, model.name)}
+                assignedCharacter={assignments[model.id]}
                 index={index}
               />
             ))}
@@ -191,9 +224,19 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
         transition={{ delay: 1 }}
         className="fixed bottom-8 right-8 text-sky-100/70 text-xs text-right"
       >
-        <p>Click cards to select/deselect</p>
-        <p>Select at least 1 champion to battle</p>
+        <p>Click cards to assign 3D characters</p>
+        <p>Each model needs a character to battle</p>
       </motion.div>
+
+      {/* Character Picker Modal */}
+      {selectedModelForPicker && (
+        <CharacterPicker
+          isOpen={pickerOpen}
+          onClose={handlePickerClose}
+          modelId={selectedModelForPicker.id}
+          modelName={selectedModelForPicker.name}
+        />
+      )}
     </div>
   );
 }

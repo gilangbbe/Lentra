@@ -9,6 +9,19 @@ import {
   ContactShadows
 } from '@react-three/drei'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { 
+  type Character3D, 
+  AVAILABLE_CHARACTERS
+} from '@/stores/character-assignment-store'
+
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+export interface SelectedModelWithCharacter {
+  modelId: string;
+  modelName: string;
+  characterId: Character3D;
+}
 
 // ============================================
 // SCENE CONFIG (from user configuration)
@@ -78,19 +91,18 @@ function FloatingIslandArena() {
 // ============================================
 // CHARACTER: LIZARD WIZARD (Static)
 // ============================================
-function LizardWizard() {
+interface CharacterProps {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number;
+}
+
+function LizardWizard({ position, rotation, scale }: CharacterProps) {
   const gltf = useLoader(GLTFLoader, '/models/lizard_wizard.glb')
-  const { lizardWizard } = SCENE_CONFIG
 
   return (
-    <group 
-      position={[lizardWizard.positionX, lizardWizard.positionY, lizardWizard.positionZ]}
-      rotation={[lizardWizard.rotationX, lizardWizard.rotationY, lizardWizard.rotationZ]}
-    >
-      <primitive
-        object={gltf.scene}
-        scale={lizardWizard.scale}
-      />
+    <group position={position} rotation={rotation}>
+      <primitive object={gltf.scene.clone()} scale={scale} />
     </group>
   )
 }
@@ -98,21 +110,67 @@ function LizardWizard() {
 // ============================================
 // CHARACTER: SKULL KNIGHT (Static)
 // ============================================
-function SkullKnight() {
+function SkullKnight({ position, rotation, scale }: CharacterProps) {
   const gltf = useLoader(GLTFLoader, '/models/skull_knight.glb')
-  const { skullKnight } = SCENE_CONFIG
 
   return (
-    <group 
-      position={[skullKnight.positionX, skullKnight.positionY, skullKnight.positionZ]}
-      rotation={[skullKnight.rotationX, skullKnight.rotationY, skullKnight.rotationZ]}
-    >
-      <primitive
-        object={gltf.scene}
-        scale={skullKnight.scale}
-      />
+    <group position={position} rotation={rotation}>
+      <primitive object={gltf.scene.clone()} scale={scale} />
     </group>
   )
+}
+
+// ============================================
+// DYNAMIC CHARACTER RENDERER
+// ============================================
+interface DynamicCharacterProps {
+  characterId: Character3D;
+  positionIndex: number; // 0 = left, 1 = right
+}
+
+// Character positions for battle arena
+const CHARACTER_POSITIONS: Array<{
+  position: [number, number, number];
+  rotation: [number, number, number];
+}> = [
+  // Left character (faces right)
+  { position: [-1.4, 0.5, 5], rotation: [0, 0.87, 0] },
+  // Right character (faces left)
+  { position: [2, -2, -0.1], rotation: [0, -0.5, 0] },
+]
+
+const DEFAULT_POSITION = CHARACTER_POSITIONS[0]!
+
+function DynamicCharacter({ characterId, positionIndex }: DynamicCharacterProps) {
+  const posConfig = CHARACTER_POSITIONS[positionIndex] ?? DEFAULT_POSITION
+  
+  if (characterId === 'lizard_wizard') {
+    return (
+      <LizardWizard
+        position={posConfig.position}
+        rotation={posConfig.rotation}
+        scale={0.5}
+      />
+    )
+  }
+  
+  if (characterId === 'skull_knight') {
+    // Skull knight needs different Y position due to model origin
+    const adjustedPosition: [number, number, number] = [
+      posConfig.position[0],
+      posConfig.position[1] - 2.5,
+      posConfig.position[2],
+    ]
+    return (
+      <SkullKnight
+        position={adjustedPosition}
+        rotation={posConfig.rotation}
+        scale={0.02}
+      />
+    )
+  }
+  
+  return null
 }
 
 // ============================================
@@ -134,12 +192,14 @@ interface GameArenaSceneProps {
   className?: string
   showCharacters?: boolean
   enableOrbitControls?: boolean
+  selectedModels?: SelectedModelWithCharacter[]
 }
 
 export function GameArenaScene({
   className = '',
   showCharacters = true,
   enableOrbitControls = false,
+  selectedModels = [],
 }: GameArenaSceneProps) {
   const { camera } = SCENE_CONFIG
 
@@ -204,11 +264,25 @@ export function GameArenaScene({
           <FloatingIslandArena />
         </Suspense>
 
-        {/* Characters */}
+        {/* Characters - render based on selected models and their assigned characters */}
         {showCharacters && (
           <Suspense fallback={null}>
-            <LizardWizard />
-            <SkullKnight />
+            {selectedModels.length > 0 ? (
+              // Render user-assigned characters
+              selectedModels.slice(0, 2).map((model, index) => (
+                <DynamicCharacter
+                  key={model.modelId}
+                  characterId={model.characterId}
+                  positionIndex={index}
+                />
+              ))
+            ) : (
+              // Default: show both characters for preview
+              <>
+                <DynamicCharacter characterId="lizard_wizard" positionIndex={0} />
+                <DynamicCharacter characterId="skull_knight" positionIndex={1} />
+              </>
+            )}
           </Suspense>
         )}
 
@@ -239,23 +313,39 @@ export function GameArenaScene({
 
 // ============================================
 // BATTLE READY SCENE (with UI overlay support)
+// Uses character assignments from the store
 // ============================================
 interface BattleArenaProps {
   className?: string
-  leftCharacterName?: string
-  rightCharacterName?: string
+  selectedModels?: SelectedModelWithCharacter[]
   onReady?: () => void
 }
 
 export function BattleArena({
   className = '',
-  leftCharacterName = 'Lizard Wizard',
-  rightCharacterName = 'Skull Knight',
+  selectedModels = [],
 }: BattleArenaProps) {
+  // Get character names for display
+  const getCharacterName = (index: number): string => {
+    const model = selectedModels[index]
+    if (!model) return index === 0 ? 'Champion 1' : 'Champion 2'
+    const charInfo = AVAILABLE_CHARACTERS.find(c => c.id === model.characterId)
+    return charInfo?.name || model.modelName
+  }
+
+  const getModelName = (index: number): string => {
+    const model = selectedModels[index]
+    return model?.modelName || (index === 0 ? 'Model 1' : 'Model 2')
+  }
+
   return (
     <div className={`relative w-full h-full ${className}`}>
       {/* 3D Scene */}
-      <GameArenaScene showCharacters={true} enableOrbitControls={false} />
+      <GameArenaScene 
+        showCharacters={true} 
+        enableOrbitControls={false}
+        selectedModels={selectedModels}
+      />
       
       {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none">
@@ -268,23 +358,29 @@ export function BattleArena({
         {/* Character name plates */}
         <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
           {/* Left character */}
-          <div className="pointer-events-auto">
-            <div className="px-5 py-2.5 bg-sky-500/20 backdrop-blur-md rounded-lg border border-sky-400/30">
-              <p className="text-sky-300 text-xs uppercase tracking-wider mb-0.5">Champion</p>
-              <h3 className="text-white text-lg font-bold">{leftCharacterName}</h3>
+          {selectedModels[0] && (
+            <div className="pointer-events-auto">
+              <div className="px-5 py-2.5 bg-sky-500/20 backdrop-blur-md rounded-lg border border-sky-400/30">
+                <p className="text-sky-300 text-xs uppercase tracking-wider mb-0.5">{getCharacterName(0)}</p>
+                <h3 className="text-white text-lg font-bold">{getModelName(0)}</h3>
+              </div>
             </div>
-          </div>
+          )}
           
           {/* VS indicator */}
-          <div className="text-3xl font-black text-white/30 tracking-widest">VS</div>
+          {selectedModels.length >= 2 && (
+            <div className="text-3xl font-black text-white/30 tracking-widest">VS</div>
+          )}
           
           {/* Right character */}
-          <div className="pointer-events-auto">
-            <div className="px-5 py-2.5 bg-amber-500/20 backdrop-blur-md rounded-lg border border-amber-400/30">
-              <p className="text-amber-300 text-xs uppercase tracking-wider mb-0.5">Champion</p>
-              <h3 className="text-white text-lg font-bold">{rightCharacterName}</h3>
+          {selectedModels[1] && (
+            <div className="pointer-events-auto">
+              <div className="px-5 py-2.5 bg-amber-500/20 backdrop-blur-md rounded-lg border border-amber-400/30">
+                <p className="text-amber-300 text-xs uppercase tracking-wider mb-0.5">{getCharacterName(1)}</p>
+                <h3 className="text-white text-lg font-bold">{getModelName(1)}</h3>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         
         {/* Arena title */}

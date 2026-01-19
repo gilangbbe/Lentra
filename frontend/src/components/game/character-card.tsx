@@ -5,17 +5,23 @@
  * 
  * A game-style character card that represents an LLM model.
  * Features floating animation, aura effects, and selection glow.
+ * Shows the assigned 3D character when selected.
  */
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Zap, Brain, MessageSquare } from "lucide-react";
+import { Canvas } from "@react-three/fiber";
+import { useGLTF, Environment } from "@react-three/drei";
+import { Suspense } from "react";
 import { cn } from "@/lib/utils";
 import type { ModelInfo } from "@/types";
+import { AVAILABLE_CHARACTERS, type Character3D } from "@/stores/character-assignment-store";
 
 interface CharacterCardProps {
   model: ModelInfo;
   isSelected: boolean;
   onSelect: () => void;
+  assignedCharacter?: Character3D;
   index: number;
 }
 
@@ -37,7 +43,7 @@ function getCharacterEmoji(modelId: string): string {
   for (const [key, emoji] of Object.entries(CHARACTER_SILHOUETTES)) {
     if (id.includes(key)) return emoji;
   }
-  return CHARACTER_SILHOUETTES.default;
+  return CHARACTER_SILHOUETTES.default ?? "🤖";
 }
 
 // Get aura gradient based on character visual
@@ -46,10 +52,28 @@ function getAuraGradient(model: ModelInfo): string {
   return `radial-gradient(ellipse at center, ${color}40 0%, ${color}10 50%, transparent 70%)`;
 }
 
-export function CharacterCard({ model, isSelected, onSelect, index }: CharacterCardProps) {
+// 3D Character mini preview component
+function CharacterMiniPreview({ characterId }: { characterId: Character3D }) {
+  const charInfo = AVAILABLE_CHARACTERS.find((c) => c.id === characterId);
+  if (!charInfo) return null;
+  
+  const { scene } = useGLTF(charInfo.modelPath);
+  const clonedScene = scene.clone();
+
+  return (
+    <primitive 
+      object={clonedScene} 
+      scale={characterId === "skull_knight" ? 0.012 : 0.35}
+      position={[0, characterId === "skull_knight" ? -0.8 : -0.4, 0]}
+      rotation={[0, 0.5, 0]}
+    />
+  );
+}
+
+export function CharacterCard({ model, isSelected, onSelect, assignedCharacter, index }: CharacterCardProps) {
   const character = model.character;
-  const primaryColor = character?.visual?.primaryColor || "#667EEA";
-  const aura = character?.visual?.aura || "neutral";
+  const assignedCharInfo = assignedCharacter ? AVAILABLE_CHARACTERS.find((c) => c.id === assignedCharacter) : null;
+  const primaryColor = assignedCharInfo?.primaryColor || character?.visual?.primaryColor || "#667EEA";
   const traits = character?.traits || ["adaptable"];
   const emoji = getCharacterEmoji(model.id);
 
@@ -163,41 +187,70 @@ export function CharacterCard({ model, isSelected, onSelect, index }: CharacterC
 
         {/* Character avatar area */}
         <div className="relative h-36 flex items-center justify-center mt-6">
-          {/* Floating animation for character */}
-          <motion.div
-            animate={{ 
-              y: [0, -8, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="relative"
-          >
-            {/* Character glow ring */}
+          {/* Show 3D character if assigned, otherwise show emoji */}
+          {assignedCharacter ? (
+            <div className="w-24 h-28 relative">
+              <Canvas
+                camera={{ position: [0, 0, 2.5], fov: 50 }}
+                style={{ background: "transparent" }}
+              >
+                <ambientLight intensity={0.7} />
+                <directionalLight position={[3, 3, 3]} intensity={1} />
+                <Suspense fallback={null}>
+                  <CharacterMiniPreview characterId={assignedCharacter} />
+                  <Environment preset="sunset" />
+                </Suspense>
+              </Canvas>
+              {/* Character name badge */}
+              <div 
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ backgroundColor: `${primaryColor}40`, color: primaryColor }}
+              >
+                {assignedCharInfo?.name}
+              </div>
+            </div>
+          ) : (
+            /* Floating animation for emoji */
             <motion.div
-              className="absolute inset-0 rounded-full blur-lg"
-              style={{ 
-                background: `radial-gradient(circle, ${primaryColor}40 0%, transparent 70%)`,
-                transform: "scale(1.5)",
-              }}
-              animate={{
-                scale: [1.5, 1.8, 1.5],
-                opacity: [0.5, 0.8, 0.5],
+              animate={{ 
+                y: [0, -8, 0],
               }}
               transition={{
-                duration: 2,
+                duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-            />
-            
-            {/* Character emoji/avatar */}
-            <span className="text-6xl relative z-10 drop-shadow-2xl">
-              {emoji}
-            </span>
-          </motion.div>
+              className="relative"
+            >
+              {/* Character glow ring */}
+              <motion.div
+                className="absolute inset-0 rounded-full blur-lg"
+                style={{ 
+                  background: `radial-gradient(circle, ${primaryColor}40 0%, transparent 70%)`,
+                  transform: "scale(1.5)",
+                }}
+                animate={{
+                  scale: [1.5, 1.8, 1.5],
+                  opacity: [0.5, 0.8, 0.5],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              
+              {/* Character emoji/avatar */}
+              <span className="text-6xl relative z-10 drop-shadow-2xl">
+                {emoji}
+              </span>
+              
+              {/* Click to assign hint */}
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] text-white/50 whitespace-nowrap">
+                Click to assign
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Character info */}
