@@ -134,9 +134,9 @@ const CHARACTER_POSITIONS: Array<{
   rotation: [number, number, number];
 }> = [
   // Left character (faces right)
-  { position: [-1.4, 0.5, 5], rotation: [0, 0.87, 0] },
+  { position: [-4, 0.5, 7], rotation: [0, 0.87, 0] },
   // Right character (faces left)
-  { position: [2, -2, -0.1], rotation: [0, -0.5, 0] },
+  { position: [7, 0.5, 5], rotation: [0, -0.5, 0] },
 ]
 
 const DEFAULT_POSITION = CHARACTER_POSITIONS[0]!

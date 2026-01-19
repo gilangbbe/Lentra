@@ -63,7 +63,7 @@ function CharacterMiniPreview({ characterId }: { characterId: Character3D }) {
     <primitive 
       object={clonedScene} 
       scale={characterId === "skull_knight" ? 0.01 : 0.3}
-      position={[0, characterId === "skull_knight" ? -0.6 : -0.3, 0]}
+      position={[0, characterId === "skull_knight" ? -1.4 : -0.3, 0]}
       rotation={[0, 0.3, 0]}
     />
   );
