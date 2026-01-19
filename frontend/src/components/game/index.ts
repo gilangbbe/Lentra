@@ -8,3 +8,4 @@ export { CharacterCard } from "./character-card";
 export { CharacterSelectArena } from "./character-select-arena";
 export { BattleStage } from "./battle-stage";
 export { PromptBattle } from "./prompt-battle";
+export { FloatingIslandScene, SpaceBackground } from "./floating-island-scene";

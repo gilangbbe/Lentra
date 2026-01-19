@@ -7,10 +7,12 @@
  * LLM models as selectable characters with stunning visual effects.
  */
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Swords, Users, Sparkles } from "lucide-react";
 import { useModels } from "@/hooks/use-models";
 import { CharacterCard } from "./character-card";
+import { FloatingIslandScene } from "./floating-island-scene";
 import { cn } from "@/lib/utils";
 
 interface CharacterSelectArenaProps {
@@ -28,31 +30,29 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
     fetchModels,
   } = useModels();
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const selectedCount = selectedModelIds.length;
   const canStartBattle = selectedCount >= 1;
 
   return (
-    <div className={cn("relative min-h-screen", className)}>
-      {/* Animated background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 -z-10" />
-      
-      {/* Grid pattern overlay */}
-      <div 
-        className="fixed inset-0 -z-10 opacity-20"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: "50px 50px",
-        }}
-      />
+    <div className={cn("relative min-h-screen overflow-hidden", className)}>
+      {/* 3D Floating Island Background */}
+      {mounted && (
+        <div className="fixed inset-0 -z-5">
+          <FloatingIslandScene showIsland={true} intensity="medium" />
+        </div>
+      )}
 
-      {/* Radial glow effects */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
-      </div>
+      {/* Gradient overlay for readability */}
+      <div className="fixed inset-0 bg-gradient-to-b from-slate-950/70 via-transparent to-slate-950/90 -z-4 pointer-events-none" />
+
+      {/* Animated background fallback */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 -z-10" />
 
       {/* Header */}
       <header className="relative z-10 pt-8 pb-4 text-center">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Swords, Sparkles, Gamepad2 } from "lucide-react";
+import { SpaceBackground } from "@/components/game";
 
 /**
  * Home Page - Landing & Navigation
@@ -13,9 +14,21 @@ import { Swords, Sparkles, Gamepad2 } from "lucide-react";
  */
 export default function HomePage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center overflow-hidden">
+      {/* 3D Space Background */}
+      {mounted && (
+        <div className="fixed inset-0 -z-5">
+          <SpaceBackground />
+        </div>
+      )}
+
       {/* Animated background effects */}
       <div className="fixed inset-0 -z-10">
         {/* Grid pattern */}
