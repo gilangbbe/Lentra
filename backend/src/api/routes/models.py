@@ -147,9 +147,9 @@ async def pull_model(model_id: str) -> dict[str, Any]:
         Status message with pull result.
     """
     logger.info("Pulling model", model_id=model_id)
-    
+
     runner = get_model_runner()
-    
+
     # Access the Ollama adapter directly for pull functionality
     adapter = runner._adapters.get("ollama")
     if not adapter:
@@ -157,7 +157,7 @@ async def pull_model(model_id: str) -> dict[str, Any]:
             status_code=503,
             detail="Ollama backend not available",
         )
-    
+
     try:
         success = await adapter.pull_model(model_id)
         if success:
@@ -184,9 +184,9 @@ async def models_health() -> dict[str, Any]:
     """
     runner = get_model_runner()
     backends = await runner.check_backends()
-    
+
     all_healthy = all(backends.values())
-    
+
     return {
         "status": "healthy" if all_healthy else "degraded",
         "backends": backends,

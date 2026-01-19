@@ -27,7 +27,7 @@ class EmbeddingService:
     
     Per architecture, the default model is all-MiniLM-L6-v2 (384 dims).
     """
-    
+
     def __init__(
         self,
         model_name: str | None = None,
@@ -42,21 +42,21 @@ class EmbeddingService:
         """
         self._model_name = model_name or settings.EMBEDDING_MODEL
         self._backend = backend
-        
+
         # Lazy-loaded model
         self._model: Any = None
         self._dimension: int | None = None
-        
+
         # Cache for computed embeddings (LRU-style)
         self._cache: dict[str, np.ndarray] = {}
         self._cache_max_size = 1000
-        
+
         logger.info(
             "Embedding service initialized",
             model=self._model_name,
             backend=self._backend,
         )
-    
+
     @property
     def dimension(self) -> int:
         """Get embedding dimension."""
@@ -70,7 +70,7 @@ class EmbeddingService:
             }
             self._dimension = dimensions.get(self._model_name, 384)
         return self._dimension
-    
+
     async def initialize(self) -> None:
         """
         Initialize the embedding model.
@@ -86,23 +86,23 @@ class EmbeddingService:
                 operation="init",
                 message=f"Unknown embedding backend: {self._backend}",
             )
-    
+
     async def _init_sentence_transformers(self) -> None:
         """Initialize sentence-transformers model."""
         try:
             # Import in thread to avoid blocking
             from sentence_transformers import SentenceTransformer
-            
+
             # Load model (this is synchronous and potentially slow)
             loop = asyncio.get_event_loop()
             self._model = await loop.run_in_executor(
                 None,
                 lambda: SentenceTransformer(self._model_name),
             )
-            
+
             # Get actual dimension
             self._dimension = self._model.get_sentence_embedding_dimension()
-            
+
             logger.info(
                 "Sentence-transformers model loaded",
                 model=self._model_name,
@@ -118,21 +118,21 @@ class EmbeddingService:
                 operation="init",
                 message=f"Failed to load embedding model: {e}",
             )
-    
+
     async def _init_ollama(self) -> None:
         """Initialize Ollama embedding client."""
         try:
             from ollama import AsyncClient
-            
+
             self._model = AsyncClient(host=settings.OLLAMA_BASE_URL)
-            
+
             # Test with a simple embedding to verify model
             result = await self._model.embeddings(
                 model=self._model_name,
                 prompt="test",
             )
             self._dimension = len(result.get("embedding", []))
-            
+
             logger.info(
                 "Ollama embedding model ready",
                 model=self._model_name,
@@ -143,7 +143,7 @@ class EmbeddingService:
                 operation="init",
                 message=f"Failed to initialize Ollama embeddings: {e}",
             )
-    
+
     async def embed(
         self,
         texts: str | list[str],
@@ -161,20 +161,20 @@ class EmbeddingService:
         """
         if self._model is None:
             await self.initialize()
-        
+
         # Normalize input
         if isinstance(texts, str):
             texts = [texts]
-        
+
         if not texts:
             return np.array([]).reshape(0, self.dimension)
-        
+
         # Check cache
         if use_cache:
             cached_results = []
             texts_to_embed = []
             text_indices = []
-            
+
             for i, text in enumerate(texts):
                 cache_key = self._cache_key(text)
                 if cache_key in self._cache:
@@ -182,7 +182,7 @@ class EmbeddingService:
                 else:
                     texts_to_embed.append(text)
                     text_indices.append(i)
-            
+
             if not texts_to_embed:
                 # All cached
                 embeddings = np.zeros((len(texts), self.dimension), dtype=np.float32)
@@ -193,7 +193,7 @@ class EmbeddingService:
             texts_to_embed = texts
             text_indices = list(range(len(texts)))
             cached_results = []
-        
+
         # Generate embeddings
         if self._backend == "sentence-transformers":
             new_embeddings = await self._embed_sentence_transformers(texts_to_embed)
@@ -204,19 +204,19 @@ class EmbeddingService:
                 operation="embed",
                 message=f"Unknown backend: {self._backend}",
             )
-        
+
         # Update cache
         if use_cache:
             for text, emb in zip(texts_to_embed, new_embeddings):
                 cache_key = self._cache_key(text)
                 self._cache[cache_key] = emb
-                
+
                 # Simple cache eviction
                 if len(self._cache) > self._cache_max_size:
                     # Remove oldest entry
                     oldest_key = next(iter(self._cache))
                     del self._cache[oldest_key]
-        
+
         # Combine cached and new results
         if cached_results:
             embeddings = np.zeros((len(texts), self.dimension), dtype=np.float32)
@@ -226,16 +226,16 @@ class EmbeddingService:
                 embeddings[idx] = emb
         else:
             embeddings = new_embeddings
-        
+
         return embeddings
-    
+
     async def _embed_sentence_transformers(
         self,
         texts: list[str],
     ) -> np.ndarray:
         """Generate embeddings using sentence-transformers."""
         loop = asyncio.get_event_loop()
-        
+
         # Run in executor to avoid blocking
         embeddings = await loop.run_in_executor(
             None,
@@ -245,32 +245,32 @@ class EmbeddingService:
                 normalize_embeddings=True,
             ),
         )
-        
+
         return embeddings.astype(np.float32)
-    
+
     async def _embed_ollama(self, texts: list[str]) -> np.ndarray:
         """Generate embeddings using Ollama."""
         embeddings = []
-        
+
         for text in texts:
             result = await self._model.embeddings(
                 model=self._model_name,
                 prompt=text,
             )
             embeddings.append(result.get("embedding", []))
-        
+
         return np.array(embeddings, dtype=np.float32)
-    
+
     def _cache_key(self, text: str) -> str:
         """Generate cache key for text."""
         # Use hash for memory efficiency
         return f"{self._model_name}:{hash(text)}"
-    
+
     def clear_cache(self) -> None:
         """Clear the embedding cache."""
         self._cache.clear()
         logger.debug("Embedding cache cleared")
-    
+
     def get_stats(self) -> dict[str, Any]:
         """Get service statistics."""
         return {
@@ -313,5 +313,5 @@ async def embed_text(
     if model and model != service._model_name:
         # Create new service with specified model
         service = EmbeddingService(model_name=model)
-    
+
     return await service.embed(texts)

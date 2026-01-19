@@ -57,7 +57,7 @@ class RAGEngine:
         self._embedder: EmbeddingService | None = None
         self._vector_store: FAISSVectorStore | None = None
         self._chunker: DocumentChunker | None = None
-        
+
         # Initialization state
         self._initialized = False
 
@@ -76,7 +76,7 @@ class RAGEngine:
         """
         if self._initialized:
             return
-        
+
         if not self._enabled:
             logger.info("RAG is disabled, skipping initialization")
             return
@@ -87,22 +87,22 @@ class RAGEngine:
                 model_name=settings.EMBEDDING_MODEL,
             )
             await self._embedder.initialize()
-            
+
             # Initialize vector store with embedding dimension
             self._vector_store = FAISSVectorStore(
                 index_path=self._index_path,
                 dimension=self._embedder.dimension,
             )
             await self._vector_store.initialize()
-            
+
             # Initialize chunker
             self._chunker = DocumentChunker(
                 chunk_size=self._chunk_size,
                 chunk_overlap=self._chunk_overlap,
             )
-            
+
             self._initialized = True
-            
+
             logger.info(
                 "RAG engine initialized",
                 embedding_dim=self._embedder.dimension,
@@ -114,12 +114,12 @@ class RAGEngine:
                 operation="initialize",
                 message=f"RAG initialization failed: {e}",
             )
-    
+
     async def _ensure_initialized(self) -> None:
         """Ensure components are initialized."""
         if not self._initialized:
             await self.initialize()
-        
+
         if not self._enabled:
             raise RAGError(
                 operation="query",
@@ -146,7 +146,7 @@ class RAGEngine:
             RAGQueryResponse: Retrieved chunks and assembled context.
         """
         await self._ensure_initialized()
-        
+
         start_time = time.perf_counter()
         k = top_k or self._top_k
 
@@ -160,7 +160,7 @@ class RAGEngine:
         try:
             # Embed the query
             query_embedding = await self._embedder.embed(query)
-            
+
             # Search vector store
             results = await self._vector_store.search(
                 query_embedding=query_embedding[0],
@@ -168,7 +168,7 @@ class RAGEngine:
                 collection=collection,
                 score_threshold=score_threshold,
             )
-            
+
             # Convert to DocumentChunk objects
             chunks = [
                 DocumentChunk(
@@ -184,12 +184,12 @@ class RAGEngine:
                 )
                 for r in results
             ]
-            
+
             # Assemble context for LLM
             assembled_context = self._assemble_context(chunks)
-            
+
             latency_ms = (time.perf_counter() - start_time) * 1000
-            
+
             logger.info(
                 "Retrieval completed",
                 chunks_found=len(chunks),
@@ -203,7 +203,7 @@ class RAGEngine:
                 assembled_context=assembled_context,
                 retrieval_latency_ms=round(latency_ms, 2),
             )
-            
+
         except Exception as e:
             logger.error("Retrieval failed", error=str(e))
             raise RAGError(
@@ -235,9 +235,9 @@ class RAGEngine:
             DocumentInfo: Information about the indexed document.
         """
         await self._ensure_initialized()
-        
+
         start_time = time.perf_counter()
-        
+
         logger.info(
             "Indexing document",
             filename=filename,
@@ -248,19 +248,19 @@ class RAGEngine:
         try:
             # Generate document ID
             doc_id = self._generate_doc_id(filename, content)
-            
+
             # Check if already indexed
             existing_docs = self._vector_store.list_documents(collection)
             if doc_id in existing_docs:
                 logger.warning("Document already indexed", doc_id=doc_id)
                 # Could return existing info or re-index
-            
+
             # Create chunker with optional overrides
             chunker = DocumentChunker(
                 chunk_size=chunk_size or self._chunk_size,
                 chunk_overlap=chunk_overlap or self._chunk_overlap,
             )
-            
+
             # Chunk the document
             base_metadata = {
                 "source": filename,
@@ -268,17 +268,17 @@ class RAGEngine:
                 **(metadata or {}),
             }
             chunks = chunker.chunk(content, metadata=base_metadata)
-            
+
             if not chunks:
                 raise RAGError(
                     operation="index",
                     message="Document produced no chunks",
                 )
-            
+
             # Generate embeddings for all chunks
             chunk_texts = [c["content"] for c in chunks]
             embeddings = await self._embedder.embed(chunk_texts)
-            
+
             # Add to vector store
             await self._vector_store.add(
                 embeddings=embeddings,
@@ -286,19 +286,19 @@ class RAGEngine:
                 collection=collection,
                 document_id=doc_id,
             )
-            
+
             # Save index
             await self._vector_store.save()
-            
+
             latency_ms = (time.perf_counter() - start_time) * 1000
-            
+
             logger.info(
                 "Document indexed",
                 doc_id=doc_id,
                 chunks=len(chunks),
                 latency_ms=round(latency_ms, 2),
             )
-            
+
             return DocumentInfo(
                 id=doc_id,
                 filename=filename,
@@ -312,7 +312,7 @@ class RAGEngine:
                     **(metadata or {}),
                 },
             )
-            
+
         except RAGError:
             raise
         except Exception as e:
@@ -333,14 +333,14 @@ class RAGEngine:
             bool: True if deleted, False if not found.
         """
         await self._ensure_initialized()
-        
+
         count = await self._vector_store.delete_document(document_id)
-        
+
         if count > 0:
             await self._vector_store.save()
             logger.info("Document deleted", document_id=document_id, chunks=count)
             return True
-        
+
         return False
 
     async def get_collection_info(self, collection: str) -> CollectionInfo | None:
@@ -354,12 +354,12 @@ class RAGEngine:
             CollectionInfo or None if not found.
         """
         await self._ensure_initialized()
-        
+
         info = self._vector_store.get_collection_info(collection)
-        
+
         if not info.get("exists"):
             return None
-        
+
         return CollectionInfo(
             name=collection,
             document_count=info.get("document_count", 0),
@@ -400,17 +400,17 @@ class RAGEngine:
             int: Number of documents removed.
         """
         await self._ensure_initialized()
-        
+
         docs = self._vector_store.list_documents(collection)
         count = 0
-        
+
         for doc_id in docs:
             if await self._vector_store.delete_document(doc_id):
                 count += 1
-        
+
         if count > 0:
             await self._vector_store.save()
-        
+
         logger.info("Collection cleared", collection=collection, documents=count)
         return count
 
@@ -441,7 +441,7 @@ class RAGEngine:
         """
         if not chunks:
             return ""
-        
+
         context_parts = []
         total_length = 0
         max_chars = max_tokens * 4  # Rough token-to-char ratio
@@ -467,13 +467,13 @@ class RAGEngine:
             "chunk_size": self._chunk_size,
             "chunk_overlap": self._chunk_overlap,
         }
-        
+
         if self._vector_store:
             stats["vector_store"] = self._vector_store.get_stats()
-        
+
         if self._embedder:
             stats["embedder"] = self._embedder.get_stats()
-        
+
         return stats
 
 

@@ -61,15 +61,15 @@ async def query_rag(request: RAGQueryRequest) -> RAGQueryResponse:
             collection=request.collection,
             score_threshold=request.score_threshold,
         )
-        
+
         logger.info(
             "RAG query completed",
             chunks_found=response.total_chunks,
             latency_ms=response.retrieval_latency_ms,
         )
-        
+
         return response
-        
+
     except RAGError as e:
         logger.error("RAG query failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -134,13 +134,14 @@ async def upload_document(
     try:
         # Read file content
         content_bytes = await file.read()
-        
+
         # Extract text based on file type
         if file_ext == ".pdf":
             # PDF extraction
             try:
-                from pypdf import PdfReader
                 import io
+
+                from pypdf import PdfReader
                 reader = PdfReader(io.BytesIO(content_bytes))
                 content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
             except ImportError:
@@ -151,8 +152,9 @@ async def upload_document(
         elif file_ext == ".docx":
             # DOCX extraction
             try:
-                from docx import Document
                 import io
+
+                from docx import Document
                 doc = Document(io.BytesIO(content_bytes))
                 content = "\n".join(para.text for para in doc.paragraphs if para.text)
             except ImportError:
@@ -163,13 +165,13 @@ async def upload_document(
         else:
             # Plain text (.txt, .md)
             content = content_bytes.decode("utf-8")
-        
+
         if not content.strip():
             raise HTTPException(
                 status_code=400,
                 detail="Document is empty or could not extract text.",
             )
-        
+
         # Index the document
         engine = get_rag_engine()
         doc_info = await engine.index_document(
@@ -180,15 +182,15 @@ async def upload_document(
             chunk_overlap=chunk_overlap,
             metadata={"file_type": file_ext},
         )
-        
+
         logger.info(
             "Document indexed successfully",
             doc_id=doc_info.id,
             chunks=doc_info.chunks,
         )
-        
+
         return doc_info
-        
+
     except RAGError as e:
         logger.error("Document indexing failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -219,7 +221,7 @@ async def list_documents(collection: str | None = None) -> dict[str, Any]:
     try:
         engine = get_rag_engine()
         documents = await engine.list_documents(collection)
-        
+
         return {
             "documents": documents,
             "total": len(documents),
@@ -252,7 +254,7 @@ async def delete_document(document_id: str) -> dict[str, str]:
     try:
         engine = get_rag_engine()
         deleted = await engine.delete_document(document_id)
-        
+
         if deleted:
             return {"status": "deleted", "document_id": document_id}
         else:
@@ -282,14 +284,14 @@ async def list_collections() -> dict[str, Any]:
     try:
         engine = get_rag_engine()
         collection_names = await engine.list_collections()
-        
+
         # Get info for each collection
         collections = []
         for name in collection_names:
             info = await engine.get_collection_info(name)
             if info:
                 collections.append(info)
-        
+
         return {
             "collections": [c.model_dump() for c in collections],
             "total": len(collections),
@@ -319,13 +321,13 @@ async def get_collection(collection_name: str) -> CollectionInfo:
     try:
         engine = get_rag_engine()
         info = await engine.get_collection_info(collection_name)
-        
+
         if not info:
             raise HTTPException(
                 status_code=404,
                 detail=f"Collection not found: {collection_name}",
             )
-        
+
         return info
     except RAGError as e:
         logger.error("Failed to get collection", error=str(e))
@@ -354,7 +356,7 @@ async def clear_collection(collection_name: str) -> dict[str, Any]:
     try:
         engine = get_rag_engine()
         count = await engine.clear_collection(collection_name)
-        
+
         return {
             "status": "cleared",
             "collection": collection_name,
