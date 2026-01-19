@@ -9,3 +9,7 @@ export { CharacterSelectArena } from "./character-select-arena";
 export { BattleStage } from "./battle-stage";
 export { PromptBattle } from "./prompt-battle";
 export { FloatingIslandScene, SpaceBackground } from "./floating-island-scene";
+export { GameArenaScene, BattleArena } from "./game-arena-scene";
+export { ConfigurableArenaScene } from "./configurable-arena-scene";
+export { SceneConfigurator, defaultConfig } from "./scene-configurator";
+export type { SceneConfig, ModelConfig } from "./scene-configurator";

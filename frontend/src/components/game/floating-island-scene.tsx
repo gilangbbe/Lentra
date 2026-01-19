@@ -1,97 +1,72 @@
 'use client'
 
-import { Suspense, useRef } from 'react'
-import { Canvas, useFrame, useLoader } from '@react-three/fiber'
-import { OrbitControls, Environment, Float, Stars } from '@react-three/drei'
+import { Suspense } from 'react'
+import { Canvas, useLoader } from '@react-three/fiber'
+import { OrbitControls, Environment, Sky, ContactShadows } from '@react-three/drei'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { Group, Points } from 'three'
 
+// ============================================
+// SCENE CONFIG (user configured values)
+// ============================================
+const SCENE_CONFIG = {
+  island: {
+    positionX: 0,
+    positionY: -2,
+    positionZ: -1.1,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    scale: 100,
+  },
+  camera: {
+    positionX: 5,
+    positionY: 3,
+    positionZ: 15,
+    fov: 45,
+  },
+}
+
+// ============================================
+// FLOATING ISLAND (Static)
+// ============================================
 function FloatingIsland() {
   const gltf = useLoader(GLTFLoader, '/models/floating_island_stage.glb')
-  const meshRef = useRef<Group>(null)
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      // Gentle floating animation
-      meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2
-      // Slow rotation
-      meshRef.current.rotation.y += 0.001
-    }
-  })
+  const { island } = SCENE_CONFIG
 
   return (
-    <Float speed={1} rotationIntensity={0.1} floatIntensity={0.5}>
+    <group>
       <primitive
-        ref={meshRef}
         object={gltf.scene}
-        scale={2}
-        position={[0, -1, 0]}
+        scale={island.scale}
+        position={[island.positionX, island.positionY, island.positionZ]}
+        rotation={[island.rotationX, island.rotationY, island.rotationZ]}
       />
-    </Float>
+      <ContactShadows
+        position={[0, island.positionY + 0.1, 0]}
+        opacity={0.3}
+        scale={50}
+        blur={2}
+        far={20}
+      />
+    </group>
   )
 }
 
-function ParticleField() {
-  const particlesRef = useRef<Points>(null)
-  const count = 200
-
-  const positions = new Float32Array(count * 3)
-  const colors = new Float32Array(count * 3)
-
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 20
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 20
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 20
-
-    // Random colors between purple and cyan
-    colors[i * 3] = 0.5 + Math.random() * 0.5
-    colors[i * 3 + 1] = 0.2 + Math.random() * 0.3
-    colors[i * 3 + 2] = 0.8 + Math.random() * 0.2
-  }
-
-  useFrame((state) => {
-    if (particlesRef.current) {
-      particlesRef.current.rotation.y = state.clock.elapsedTime * 0.02
-      particlesRef.current.rotation.x = state.clock.elapsedTime * 0.01
-    }
-  })
-
-  return (
-    <points ref={particlesRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-color"
-          count={count}
-          array={colors}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.05}
-        vertexColors
-        transparent
-        opacity={0.8}
-        sizeAttenuation
-      />
-    </points>
-  )
-}
-
+// ============================================
+// LOADING FALLBACK
+// ============================================
 function LoadingFallback() {
   return (
     <mesh>
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="#8B5CF6" wireframe />
+      <meshStandardMaterial color="#3B82F6" wireframe />
     </mesh>
   )
 }
 
+// ============================================
+// FLOATING ISLAND SCENE (Blue Sky Theme)
+// ============================================
 interface FloatingIslandSceneProps {
   className?: string
   showIsland?: boolean
@@ -101,90 +76,93 @@ interface FloatingIslandSceneProps {
 export function FloatingIslandScene({
   className = '',
   showIsland = true,
-  intensity = 'medium',
 }: FloatingIslandSceneProps) {
-  const starCount = intensity === 'high' ? 5000 : intensity === 'medium' ? 2500 : 1000
+  const { camera } = SCENE_CONFIG
 
   return (
     <div className={`absolute inset-0 ${className}`}>
       <Canvas
-        camera={{ position: [0, 2, 8], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent' }}
+        camera={{ 
+          position: [camera.positionX, camera.positionY, camera.positionZ], 
+          fov: camera.fov 
+        }}
+        gl={{ antialias: true, alpha: false }}
       >
-        {/* Lighting */}
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[5, 5, 5]} intensity={1} color="#ffffff" />
-        <pointLight position={[-5, 5, -5]} intensity={0.5} color="#8B5CF6" />
-        <pointLight position={[5, -5, 5]} intensity={0.5} color="#06B6D4" />
-
-        {/* Stars background */}
-        <Stars
-          radius={100}
-          depth={50}
-          count={starCount}
-          factor={4}
-          saturation={0}
-          fade
-          speed={1}
+        {/* Blue sky background */}
+        <color attach="background" args={['#87CEEB']} />
+        
+        {/* Realistic sky */}
+        <Sky
+          distance={450000}
+          sunPosition={[100, 50, 100]}
+          inclination={0.5}
+          azimuth={0.25}
+          rayleigh={0.5}
         />
 
-        {/* Floating particles */}
-        <ParticleField />
+        {/* Stable lighting */}
+        <ambientLight intensity={0.6} />
+        <directionalLight
+          position={[50, 100, 50]}
+          intensity={1.2}
+          color="#FFFAF0"
+        />
+        <directionalLight
+          position={[-30, 40, -30]}
+          intensity={0.3}
+          color="#B0E2FF"
+        />
+        <hemisphereLight args={['#87CEEB', '#8B7355', 0.4]} />
 
-        {/* The floating island */}
+        {/* Island */}
         {showIsland && (
           <Suspense fallback={<LoadingFallback />}>
             <FloatingIsland />
           </Suspense>
         )}
 
-        {/* Subtle orbit controls for interactivity */}
+        {/* Static camera */}
         <OrbitControls
           enableZoom={false}
           enablePan={false}
-          maxPolarAngle={Math.PI / 2}
-          minPolarAngle={Math.PI / 4}
-          autoRotate
-          autoRotateSpeed={0.3}
+          enableRotate={false}
         />
 
-        {/* Environment for reflections */}
-        <Environment preset="night" />
-
-        {/* Fog for atmosphere */}
-        <fog attach="fog" args={['#0a0a1f', 5, 30]} />
+        <Environment preset="dawn" />
       </Canvas>
     </div>
   )
 }
 
-// Lightweight version without the island (just particles and stars)
+// ============================================
+// SIMPLE BLUE SKY BACKGROUND (No 3D models)
+// ============================================
 export function SpaceBackground({ className = '' }: { className?: string }) {
   return (
     <div className={`absolute inset-0 ${className}`}>
       <Canvas
         camera={{ position: [0, 0, 5], fov: 60 }}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent' }}
+        gl={{ antialias: true, alpha: false }}
       >
-        <ambientLight intensity={0.2} />
-        <Stars
-          radius={100}
-          depth={50}
-          count={3000}
-          factor={4}
-          saturation={0}
-          fade
-          speed={0.5}
+        {/* Blue sky */}
+        <color attach="background" args={['#87CEEB']} />
+        
+        <Sky
+          distance={450000}
+          sunPosition={[100, 50, 100]}
+          inclination={0.5}
+          azimuth={0.25}
+          rayleigh={0.5}
         />
-        <ParticleField />
+
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[50, 100, 50]} intensity={1} color="#FFFAF0" />
+        <hemisphereLight args={['#87CEEB', '#8B7355', 0.4]} />
+
         <OrbitControls
           enableZoom={false}
           enablePan={false}
           enableRotate={false}
-          autoRotate
-          autoRotateSpeed={0.1}
         />
       </Canvas>
     </div>

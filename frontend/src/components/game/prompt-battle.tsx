@@ -4,15 +4,17 @@
  * Prompt Battle Component
  * 
  * The main battle interface where users can submit prompts
- * and watch their selected champions compete.
+ * and watch their selected LLM models compete with responses.
+ * Features an immersive 3D arena background for visual appeal.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, ArrowLeft, Trophy, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/use-models";
 import { BattleStage } from "./battle-stage";
+import { GameArenaScene } from "./game-arena-scene";
 import type { ModelInfo, ModelResponse } from "@/types";
 
 interface PromptBattleProps {
@@ -65,9 +67,11 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
       const data = await response.json();
 
       // Update champions with responses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setChampions(prev => prev.map(champion => {
-        const modelResponse = data.responses?.find(
-          (r: ModelResponse) => r.modelId === champion.model.id || r.model_id === champion.model.id
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const modelResponse = data.responses?.find((r: any) => 
+          r.modelId === champion.model.id || r.model_id === champion.model.id
         );
         return {
           ...champion,
@@ -83,7 +87,8 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
 
       // Determine winner (fastest response for now)
       if (data.responses?.length > 0) {
-        const sorted = [...data.responses].sort((a, b) => 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sorted = [...data.responses].sort((a: any, b: any) => 
           (a.latencyMs || a.latency_ms || 0) - (b.latencyMs || b.latency_ms || 0)
         );
         setWinner(sorted[0]?.modelId || sorted[0]?.model_id);
@@ -103,22 +108,25 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
     setWinner(undefined);
   };
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
-    <div className={cn("relative min-h-screen", className)}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/20 to-slate-950 -z-10" />
+    <div className={cn("relative min-h-screen overflow-hidden", className)}>
+      {/* 3D Arena Background */}
+      {mounted && (
+        <div className="fixed inset-0 -z-5">
+          <GameArenaScene showCharacters={true} enableOrbitControls={false} />
+        </div>
+      )}
+
+      {/* Dark overlay for readability */}
+      <div className="fixed inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/40 to-slate-950/80 -z-4 pointer-events-none" />
       
-      {/* Grid pattern */}
-      <div 
-        className="fixed inset-0 -z-10 opacity-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)
-          `,
-          backgroundSize: "40px 40px",
-        }}
-      />
+      {/* Fallback background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/20 to-slate-950 -z-10" />
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-slate-900/50 backdrop-blur-sm border-b border-slate-800">

@@ -49,10 +49,10 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
       )}
 
       {/* Gradient overlay for readability */}
-      <div className="fixed inset-0 bg-gradient-to-b from-slate-950/70 via-transparent to-slate-950/90 -z-4 pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-b from-sky-900/40 via-transparent to-sky-950/60 -z-4 pointer-events-none" />
 
       {/* Animated background fallback */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-br from-sky-400 via-blue-500 to-sky-600 -z-10" />
 
       {/* Header */}
       <header className="relative z-10 pt-8 pb-4 text-center">
@@ -62,11 +62,11 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
           transition={{ duration: 0.6 }}
         >
           <h1 className="text-4xl font-bold text-white mb-2 tracking-wider">
-            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-sky-100 via-white to-sky-100 bg-clip-text text-transparent drop-shadow-lg">
               SELECT YOUR CHAMPIONS
             </span>
           </h1>
-          <p className="text-slate-400 text-sm">
+          <p className="text-sky-100 text-sm">
             Choose the AI models to compete in the arena
           </p>
         </motion.div>
@@ -76,14 +76,14 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-6 inline-flex items-center gap-3 px-6 py-3 rounded-full bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm"
+          className="mt-6 inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/20 border border-white/30 backdrop-blur-sm"
         >
-          <Users className="w-5 h-5 text-purple-400" />
+          <Users className="w-5 h-5 text-white" />
           <span className="text-white font-medium">
-            <span className="text-purple-400">{selectedCount}</span>
-            <span className="text-slate-500 mx-1">/</span>
-            <span className="text-slate-400">{models.length}</span>
-            <span className="text-slate-500 ml-2">Selected</span>
+            <span className="text-sky-100 font-bold">{selectedCount}</span>
+            <span className="text-sky-200 mx-1">/</span>
+            <span className="text-sky-100">{models.length}</span>
+            <span className="text-sky-200 ml-2">Selected</span>
           </span>
         </motion.div>
       </header>
@@ -95,7 +95,7 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           >
-            <Sparkles className="w-12 h-12 text-purple-400" />
+            <Sparkles className="w-12 h-12 text-sky-200" />
           </motion.div>
         </div>
       )}
@@ -131,7 +131,7 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
           </p>
           <button
             onClick={() => void fetchModels()}
-            className="px-6 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors border border-purple-500/30"
+            className="px-6 py-2 rounded-lg bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition-colors border border-sky-500/30"
           >
             Refresh
           </button>
@@ -168,13 +168,13 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
           className={cn(
             "group relative px-12 py-4 rounded-xl font-bold text-lg tracking-wider uppercase transition-all duration-300",
             canStartBattle
-              ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 hover:scale-105 hover:shadow-[0_0_40px_rgba(168,85,247,0.4)]"
+              ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:from-sky-400 hover:to-blue-500 hover:scale-105 hover:shadow-[0_0_40px_rgba(14,165,233,0.4)]"
               : "bg-slate-800 text-slate-500 cursor-not-allowed"
           )}
         >
           {/* Button glow effect */}
           {canStartBattle && (
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity -z-10" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-sky-500 to-blue-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity -z-10" />
           )}
           
           <span className="flex items-center gap-3">
@@ -189,7 +189,7 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="fixed bottom-8 right-8 text-slate-500 text-xs text-right"
+        className="fixed bottom-8 right-8 text-sky-100/70 text-xs text-right"
       >
         <p>Click cards to select/deselect</p>
         <p>Select at least 1 champion to battle</p>
