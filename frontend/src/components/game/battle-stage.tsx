@@ -13,6 +13,7 @@ import { Swords, Crown, Clock, MessageSquare } from "lucide-react";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 import { Suspense } from "react";
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import type { ModelInfo, ModelResponse } from "@/types";
 import { AVAILABLE_CHARACTERS, type Character3D } from "@/stores/character-assignment-store";
@@ -148,7 +149,7 @@ function ChampionSlot({ champion, index, isWinner }: {
           {characterId ? (
             // 3D Character preview
             <Canvas
-              camera={{ position: [0, 0, 2], fov: 50 }}
+              camera={{ position: [0, 0, 2], fov: 45 }}
               style={{ background: "transparent" }}
             >
               <ambientLight intensity={0.8} />
@@ -212,9 +213,11 @@ function ChampionSlot({ champion, index, isWinner }: {
       >
         {response ? (
           <div className="p-4">
-            <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
-              {response.text}
-            </p>
+            <div className="text-white text-sm leading-relaxed prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:text-white prose-strong:text-white prose-code:text-sky-300 prose-code:bg-slate-800/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-800/50 prose-pre:border prose-pre:border-white/10">
+              <ReactMarkdown>
+                {response.text}
+              </ReactMarkdown>
+            </div>
             
             {/* Stats */}
             <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-[10px] text-white/60">
@@ -275,18 +278,18 @@ export function BattleStage({ champions, isLoading: _isLoading, winner, classNam
         ))}
       </div>
 
-      {/* VS indicator for 2 champions */}
+      {/* VS indicator for 2 champions - centered between cards */}
       {champions.length === 2 && (
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, type: "spring" }}
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
+          className="absolute top-32 left-0 right-0 flex justify-center z-10 pointer-events-none"
         >
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-sky-500 to-blue-600 rounded-full blur-xl opacity-50" />
-            <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center border-2 border-white/30 shadow-lg shadow-sky-500/30">
-              <span className="text-white font-bold text-xl">VS</span>
+            <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center border-2 border-white/30 shadow-lg shadow-sky-500/30">
+              <span className="text-white font-bold text-lg">VS</span>
             </div>
           </div>
         </motion.div>

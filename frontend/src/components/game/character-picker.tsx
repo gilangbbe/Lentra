@@ -49,7 +49,7 @@ function CharacterPreview({ character }: { character: Character3DInfo }) {
       <primitive 
         object={clonedScene} 
         scale={character.id === "skull_knight" ? 0.015 : 0.4}
-        position={[0, character.id === "skull_knight" ? -1 : -0.5, 0]}
+        position={[0, character.id === "skull_knight" ? -2 : -0.5, 0]}
       />
     </group>
   );

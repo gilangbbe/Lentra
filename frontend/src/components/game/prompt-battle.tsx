@@ -211,8 +211,8 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
       {/* Fallback background */}
       <div className="fixed inset-0 bg-gradient-to-br from-sky-400 via-blue-500 to-sky-600 -z-10" />
 
-      {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur-sm border-b border-white/20">
+      {/* Top bar - highest z-index to ensure dropdown works */}
+      <header className="relative z-50 flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur-sm border-b border-white/20">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
@@ -223,7 +223,7 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
 
         <div className="flex items-center gap-4">
           {/* Evaluation Mode Selector */}
-          <div className="relative">
+          <div className="relative z-50">
             <button
               onClick={() => setShowEvalDropdown(!showEvalDropdown)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
@@ -239,7 +239,7 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full mt-1 right-0 w-48 bg-slate-900/95 backdrop-blur-sm rounded-lg border border-white/20 shadow-xl overflow-hidden z-50"
+                  className="absolute top-full mt-1 right-0 w-48 bg-slate-900/95 backdrop-blur-sm rounded-lg border border-white/20 shadow-xl overflow-hidden z-[100]"
                 >
                   {EVALUATION_MODES.map(mode => (
                     <button
@@ -325,6 +325,7 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
                   winner={winner}
                   mode={evaluationMode}
                   evaluationLatencyMs={evaluationLatency}
+                  modelNames={Object.fromEntries(champions.map(c => [c.model.id, c.model.name]))}
                 />
               </div>
             </motion.div>

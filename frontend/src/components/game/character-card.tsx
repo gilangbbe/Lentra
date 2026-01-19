@@ -63,8 +63,8 @@ function CharacterMiniPreview({ characterId }: { characterId: Character3D }) {
   return (
     <primitive 
       object={clonedScene} 
-      scale={characterId === "skull_knight" ? 0.012 : 0.35}
-      position={[0, characterId === "skull_knight" ? -0.8 : -0.4, 0]}
+      scale={characterId === "skull_knight" ? 0.01 : 0.35}
+      position={[0, characterId === "skull_knight" ? -1.5 : -0.4, 0]}
       rotation={[0, 0.5, 0]}
     />
   );
@@ -191,7 +191,7 @@ export function CharacterCard({ model, isSelected, onSelect, assignedCharacter, 
           {assignedCharacter ? (
             <div className="w-24 h-28 relative">
               <Canvas
-                camera={{ position: [0, 0, 2.5], fov: 50 }}
+                camera={{ position: [0, 0, 2.5], fov: 45 }}
                 style={{ background: "transparent" }}
               >
                 <ambientLight intensity={0.7} />

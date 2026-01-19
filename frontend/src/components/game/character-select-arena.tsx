@@ -190,11 +190,11 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
 
       {/* Battle button */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 20, x: "-50%" }}
+        animate={{ opacity: 1, y: 0, x: "-50%" }}
         transition={{ delay: 0.5 }}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20"
-      >
+        className="fixed bottom-8 left-1/2 z-20"
+        >
         <button
           onClick={onBattleReady}
           disabled={!canStartBattle}
@@ -211,7 +211,7 @@ export function CharacterSelectArena({ onBattleReady, className }: CharacterSele
           )}
           
           <span className="flex items-center gap-3">
-            <Swords className="w-5 h-5" />
+            <Swords className="w-6 h-6" />
             {canStartBattle ? "Enter Arena" : "Select Champions"}
           </span>
         </button>

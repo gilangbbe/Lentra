@@ -14,9 +14,7 @@ import {
   Sparkles, 
   AlertTriangle, 
   Trophy,
-  Brain,
   BarChart3,
-  Zap,
 } from "lucide-react";
 import type { EvaluationScore, EvaluationMode } from "@/types";
 
@@ -59,6 +57,7 @@ interface EvaluationScoreCardProps {
   isWinner?: boolean;
   rank?: number;
   mode?: EvaluationMode;
+  modelName?: string; // Display name for the model
   className?: string;
 }
 
@@ -66,19 +65,14 @@ export function EvaluationScoreCard({
   score, 
   isWinner, 
   rank,
-  mode,
+  mode: _mode,
+  modelName,
   className 
 }: EvaluationScoreCardProps) {
   const finalPercentage = Math.round(score.finalScore * 100);
-  
-  // Get mode icon
-  const modeIcon = {
-    heuristic: <Zap className="w-3 h-3" />,
-    embedding_similarity: <Brain className="w-3 h-3" />,
-    llm_judge: <Sparkles className="w-3 h-3" />,
-    ensemble: <BarChart3 className="w-3 h-3" />,
-    human_vote: <Trophy className="w-3 h-3" />,
-  }[mode || "heuristic"];
+
+  // Display model name - extract short name from model ID if not provided
+  const displayName = modelName || score.modelId.split(":")[0] || score.modelId;
 
   return (
     <motion.div
@@ -86,13 +80,13 @@ export function EvaluationScoreCard({
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
         "rounded-lg p-3 space-y-3",
-        "bg-slate-800/50 backdrop-blur-sm",
+        "bg-slate-800/60 backdrop-blur-sm",
         "border",
-        isWinner ? "border-yellow-500/50" : "border-white/10",
+        isWinner ? "border-yellow-500/50 ring-1 ring-yellow-500/30" : "border-white/10",
         className
       )}
     >
-      {/* Header */}
+      {/* Header with model name */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isWinner && (
@@ -115,12 +109,10 @@ export function EvaluationScoreCard({
               #{rank}
             </span>
           )}
-          {mode && (
-            <div className="flex items-center gap-1 text-[10px] text-white/50 uppercase">
-              {modeIcon}
-              <span>{mode.replace("_", " ")}</span>
-            </div>
-          )}
+          {/* Model Name */}
+          <span className="text-sm font-semibold text-white truncate max-w-[120px]" title={score.modelId}>
+            {displayName}
+          </span>
         </div>
         
         {/* Final Score Badge */}
@@ -131,9 +123,14 @@ export function EvaluationScoreCard({
           finalPercentage >= 40 ? "bg-yellow-500/20 text-yellow-400" :
           "bg-red-500/20 text-red-400"
         )}>
-          <span>{finalPercentage}</span>
+          <span>{finalPercentage}%</span>
         </div>
       </div>
+
+      {/* Model ID subtitle */}
+      <p className="text-[10px] text-white/40 font-mono -mt-2 truncate" title={score.modelId}>
+        {score.modelId}
+      </p>
 
       {/* Score Bars */}
       <div className="space-y-2">
@@ -173,6 +170,7 @@ interface EvaluationSummaryProps {
   winner?: string;
   mode?: EvaluationMode;
   evaluationLatencyMs?: number;
+  modelNames?: Record<string, string>; // Map of modelId to display name
   className?: string;
 }
 
@@ -181,6 +179,7 @@ export function EvaluationSummary({
   winner,
   mode,
   evaluationLatencyMs,
+  modelNames = {},
   className,
 }: EvaluationSummaryProps) {
   if (scores.length === 0) return null;
@@ -195,17 +194,19 @@ export function EvaluationSummary({
         <div className="flex items-center gap-2 text-white/70">
           <BarChart3 className="w-4 h-4 text-sky-400" />
           <span className="font-medium">Evaluation Results</span>
+        </div>
+        <div className="flex items-center gap-2">
           {mode && (
             <span className="text-[10px] text-white/50 uppercase px-1.5 py-0.5 rounded bg-white/5">
               {mode.replace("_", " ")}
             </span>
           )}
+          {evaluationLatencyMs && (
+            <span className="text-[10px] text-white/40">
+              {evaluationLatencyMs.toFixed(0)}ms
+            </span>
+          )}
         </div>
-        {evaluationLatencyMs && (
-          <span className="text-[10px] text-white/50">
-            {evaluationLatencyMs.toFixed(0)}ms
-          </span>
-        )}
       </div>
 
       {/* Score Cards */}
@@ -217,6 +218,7 @@ export function EvaluationSummary({
             isWinner={score.modelId === winner}
             rank={index + 1}
             mode={mode}
+            modelName={modelNames[score.modelId]}
           />
         ))}
       </div>
