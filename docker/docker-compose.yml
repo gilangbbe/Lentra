@@ -1,0 +1,109 @@
+# =============================================================================
+# Docker Compose - Lentra Development
+# =============================================================================
+# Complete development stack with all services
+# Usage: docker-compose up -d
+# -----------------------------------------------------------------------------
+
+services:
+  # ------------------------------------
+  # Backend API Server
+  # ------------------------------------
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: lentra-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+      - VECTOR_STORE_PATH=/data/vector_store
+    volumes:
+      - ../backend/src:/app/src:ro  # Hot reload in dev
+      - vector_data:/data/vector_store
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - lentra-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ------------------------------------
+  # Frontend Next.js App
+  # ------------------------------------
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: lentra-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - lentra-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ------------------------------------
+  # Ollama LLM Server
+  # ------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lentra-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+    networks:
+      - lentra-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # GPU support (uncomment for NVIDIA GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+# ------------------------------------
+# Volumes
+# ------------------------------------
+volumes:
+  ollama_data:
+    name: lentra-ollama-data
+  vector_data:
+    name: lentra-vector-data
+
+# ------------------------------------
+# Networks
+# ------------------------------------
+networks:
+  lentra-network:
+    name: lentra-network
+    driver: bridge

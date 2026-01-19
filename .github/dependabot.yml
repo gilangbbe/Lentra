@@ -1,0 +1,88 @@
+# =============================================================================
+# Dependabot Configuration
+# =============================================================================
+# Automatically creates PRs for dependency updates
+# -----------------------------------------------------------------------------
+
+version: 2
+
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(backend):"
+    labels:
+      - "dependencies"
+      - "backend"
+    reviewers:
+      - "maintainers"
+    groups:
+      python-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend Node dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(frontend):"
+    labels:
+      - "dependencies"
+      - "frontend"
+    reviewers:
+      - "maintainers"
+    groups:
+      npm-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Common package dependencies
+  - package-ecosystem: "npm"
+    directory: "/common"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps(common):"
+    labels:
+      - "dependencies"
+      - "common"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(actions):"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "deps(docker):"
+    labels:
+      - "dependencies"
+      - "docker"
