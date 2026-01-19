@@ -59,7 +59,7 @@ class HeuristicStrategy:
             model_id = response.get("model_id", f"model_{i}")
             text = response.get("content", "")
             latency_ms = response.get("latency", 0) * 1000  # Convert seconds to ms
-            
+
             score = self._evaluate_single_dict(prompt, model_id, text, latency_ms, weights)
             scores.append(score)
 

@@ -9,10 +9,10 @@ from typing import Any, Literal
 
 from src.core.config import settings
 from src.core.logging import get_logger
-from src.evaluation.strategies.heuristic import HeuristicStrategy
 from src.evaluation.strategies.embedding_similarity import EmbeddingSimilarityStrategy
-from src.evaluation.strategies.llm_judge import LLMJudgeStrategy
 from src.evaluation.strategies.ensemble import EnsembleStrategy
+from src.evaluation.strategies.heuristic import HeuristicStrategy
+from src.evaluation.strategies.llm_judge import LLMJudgeStrategy
 from src.schemas.evaluation import EvaluationScore
 from src.schemas.model import ModelResponse
 

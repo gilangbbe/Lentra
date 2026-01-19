@@ -8,10 +8,10 @@ Contains all evaluation strategies for comparing LLM responses:
 - EnsembleStrategy: Combines multiple strategies
 """
 
-from src.evaluation.strategies.heuristic import HeuristicStrategy
 from src.evaluation.strategies.embedding_similarity import EmbeddingSimilarityStrategy
-from src.evaluation.strategies.llm_judge import LLMJudgeStrategy
 from src.evaluation.strategies.ensemble import EnsembleStrategy
+from src.evaluation.strategies.heuristic import HeuristicStrategy
+from src.evaluation.strategies.llm_judge import LLMJudgeStrategy
 
 __all__ = [
     "HeuristicStrategy",

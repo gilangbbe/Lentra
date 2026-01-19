@@ -5,7 +5,6 @@ Evaluates responses based on semantic similarity to the prompt
 using vector embeddings and cosine similarity.
 """
 
-import asyncio
 from typing import Any
 
 import numpy as np
