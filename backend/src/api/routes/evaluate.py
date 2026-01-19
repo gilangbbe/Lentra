@@ -5,11 +5,16 @@ Handles endpoints for evaluating and comparing model responses.
 """
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from src.core.config import settings
 from src.core.logging import get_logger
+from src.evaluation.strategies.heuristic import HeuristicStrategy
+from src.evaluation.strategies.embedding_similarity import EmbeddingSimilarityStrategy
+from src.evaluation.strategies.llm_judge import LLMJudgeStrategy
+from src.evaluation.strategies.ensemble import EnsembleStrategy
 from src.schemas.evaluation import (
     EvaluateRequest,
     EvaluateResponse,
@@ -20,6 +25,24 @@ from src.schemas.evaluation import (
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+# Strategy instances (lazy-loaded)
+_heuristic: HeuristicStrategy | None = None
+_embedding: EmbeddingSimilarityStrategy | None = None
+_llm_judge: LLMJudgeStrategy | None = None
+_ensemble: EnsembleStrategy | None = None
+
+
+def _convert_responses(request: EvaluateRequest) -> list[dict[str, Any]]:
+    """Convert request responses to strategy format."""
+    return [
+        {
+            "model_id": r.model_id,
+            "content": r.text,
+            "latency": r.latency_ms / 1000 if r.latency_ms else 0,
+        }
+        for r in request.responses
+    ]
 
 
 @router.post("/evaluate", response_model=EvaluateResponse)
@@ -100,51 +123,16 @@ async def _evaluate_heuristic(request: EvaluateRequest) -> list[EvaluationScore]
     
     Simple but fast evaluation that doesn't require additional models.
     """
-    scores = []
+    global _heuristic
+    if _heuristic is None:
+        _heuristic = HeuristicStrategy()
 
-    for response in request.responses:
-        # Calculate heuristic scores
-        text = response.text
-
-        # Relevance: Based on keyword overlap with prompt
-        prompt_words = set(request.prompt.lower().split())
-        response_words = set(text.lower().split())
-        overlap = len(prompt_words & response_words)
-        relevance = min(1.0, overlap / max(len(prompt_words), 1) * 2)
-
-        # Clarity: Based on structure (sentences, formatting)
-        sentence_count = text.count(".") + text.count("!") + text.count("?")
-        word_count = len(text.split())
-        avg_sentence_len = word_count / max(sentence_count, 1)
-        clarity = min(1.0, max(0.0, 1.0 - abs(avg_sentence_len - 15) / 30))
-
-        # Hallucination risk: Inverse of confidence (simplified)
-        # Lower latency might indicate more confident response
-        latency_factor = min(1.0, response.latency_ms / 5000)
-        hallucination_risk = latency_factor * 0.5
-
-        # Final score (weighted average)
-        weights = request.weights or {
-            "relevance": 0.4,
-            "clarity": 0.3,
-            "hallucination": 0.3,
-        }
-        final_score = (
-            relevance * weights.get("relevance", 0.4) +
-            clarity * weights.get("clarity", 0.3) +
-            (1 - hallucination_risk) * weights.get("hallucination", 0.3)
-        )
-
-        scores.append(EvaluationScore(
-            model_id=response.model_id,
-            relevance=round(relevance, 3),
-            clarity=round(clarity, 3),
-            hallucination_risk=round(hallucination_risk, 3),
-            final_score=round(final_score, 3),
-            reasoning="Heuristic evaluation based on structure and keyword overlap.",
-        ))
-
-    return scores
+    response_dicts = _convert_responses(request)
+    return _heuristic.evaluate(
+        prompt=request.prompt,
+        responses=response_dicts,
+        context=request.reference_text,
+    )
 
 
 async def _evaluate_embedding_similarity(
@@ -155,16 +143,17 @@ async def _evaluate_embedding_similarity(
     
     Compares response embeddings to the prompt or reference text.
     """
-    # TODO: Implement embedding similarity
-    # from src.rag.embedder import Embedder
-    # embedder = Embedder()
-    # prompt_embedding = await embedder.embed(request.prompt)
-    # for response in request.responses:
-    #     response_embedding = await embedder.embed(response.text)
-    #     similarity = cosine_similarity(prompt_embedding, response_embedding)
+    global _embedding
+    if _embedding is None:
+        _embedding = EmbeddingSimilarityStrategy()
+        await _embedding.initialize()
 
-    logger.warning("Embedding similarity not yet implemented, using heuristic fallback")
-    return await _evaluate_heuristic(request)
+    response_dicts = _convert_responses(request)
+    return await _embedding.evaluate(
+        prompt=request.prompt,
+        responses=response_dicts,
+        context=request.reference_text,
+    )
 
 
 async def _evaluate_llm_judge(request: EvaluateRequest) -> list[EvaluationScore]:
@@ -173,44 +162,47 @@ async def _evaluate_llm_judge(request: EvaluateRequest) -> list[EvaluationScore]
     
     Uses another model to evaluate and score responses.
     """
+    global _llm_judge
     judge_model = request.judge_model_id or settings.OLLAMA_DEFAULT_MODEL
 
-    # TODO: Implement LLM judge
-    # from src.models.runner import ModelRunner
-    # runner = ModelRunner()
-    #
-    # judge_prompt = f'''
-    # Evaluate the following responses to this prompt:
-    #
-    # PROMPT: {request.prompt}
-    #
-    # RESPONSES:
-    # {formatted_responses}
-    #
-    # Score each response on: relevance, clarity, hallucination_risk
-    # Return JSON with scores for each.
-    # '''
-    #
-    # result = await runner.generate(judge_model, judge_prompt)
-    # Parse JSON from result...
+    if _llm_judge is None:
+        _llm_judge = LLMJudgeStrategy(judge_model=judge_model)
+        await _llm_judge.initialize()
 
-    logger.warning("LLM judge not yet implemented, using heuristic fallback")
-    return await _evaluate_heuristic(request)
+    response_dicts = _convert_responses(request)
+    return await _llm_judge.evaluate(
+        prompt=request.prompt,
+        responses=response_dicts,
+        context=request.reference_text,
+        judge_model=judge_model,
+    )
 
 
 async def _evaluate_ensemble(
     request: EvaluateRequest,
 ) -> tuple[list[EvaluationScore], str]:
     """
-    Ensemble evaluation that merges multiple outputs.
+    Ensemble evaluation that combines multiple strategies.
     
     Returns both scores and a merged output combining the best parts.
     """
-    # First, score all responses
-    scores = await _evaluate_heuristic(request)
+    global _ensemble
+    if _ensemble is None:
+        # Use heuristic + embedding by default (fast, no extra model calls)
+        _ensemble = EnsembleStrategy(
+            use_llm_judge=False,
+            weights=request.weights,
+        )
+        await _ensemble.initialize()
 
-    # TODO: Implement proper ensemble merging
-    # For now, just use the best response
+    response_dicts = _convert_responses(request)
+    scores = await _ensemble.evaluate(
+        prompt=request.prompt,
+        responses=response_dicts,
+        context=request.reference_text,
+    )
+
+    # For ensemble output, use the best scoring response
     sorted_scores = sorted(scores, key=lambda s: s.final_score, reverse=True)
 
     if sorted_scores:

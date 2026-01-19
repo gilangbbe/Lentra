@@ -35,11 +35,6 @@ export const AVAILABLE_CHARACTERS: Character3DInfo[] = [
   },
 ];
 
-interface CharacterAssignment {
-  modelId: string;
-  characterId: Character3D;
-}
-
 interface CharacterAssignmentState {
   // Map of modelId -> characterId
   assignments: Record<string, Character3D>;

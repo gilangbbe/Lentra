@@ -188,8 +188,8 @@ docker-compose -f docker/docker-compose.yml up --build
 - [x] Project scaffolding
 - [x] Ollama adapter implementation
 - [x] Basic RAG with FAISS
-- [ ] Side-by-side comparison UI
-- [ ] Evaluation strategies
+- [x] Side-by-side comparison UI
+- [x] Evaluation strategies (heuristic, embedding similarity, LLM-as-judge, ensemble)
 - [ ] Character/avatar system
 - [ ] Additional LLM adapters
 

@@ -13,8 +13,8 @@ import type { SelectedModelWithCharacter } from "@/components/game/game-arena-sc
  * Hook that combines selected models with their character assignments.
  */
 export function useSelectedModelsWithCharacters() {
-  const { models, selectedModelIds, selectedModels } = useModels();
-  const { assignments, getCharacterForModel } = useCharacterAssignmentStore();
+  const { selectedModelIds, selectedModels } = useModels();
+  const { assignments } = useCharacterAssignmentStore();
 
   // Build list of selected models with their character assignments
   const selectedModelsWithCharacters = useMemo((): SelectedModelWithCharacter[] => {

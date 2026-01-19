@@ -33,10 +33,11 @@ class HeuristicStrategy:
             "hallucination": 0.30,
         }
 
-    async def evaluate(
+    def evaluate(
         self,
         prompt: str,
-        responses: list[ModelResponse],
+        responses: list[dict],
+        context: str | None = None,
         weights: dict[str, float] | None = None,
     ) -> list[EvaluationScore]:
         """
@@ -44,7 +45,8 @@ class HeuristicStrategy:
         
         Args:
             prompt: Original prompt.
-            responses: Responses to evaluate.
+            responses: Responses to evaluate (as dicts with 'content', 'model_id', 'latency').
+            context: Optional RAG context (unused in heuristic evaluation).
             weights: Custom weights for scoring components.
         
         Returns:
@@ -53,36 +55,42 @@ class HeuristicStrategy:
         weights = weights or self._default_weights
         scores = []
 
-        for response in responses:
-            score = self._evaluate_single(prompt, response, weights)
+        for i, response in enumerate(responses):
+            model_id = response.get("model_id", f"model_{i}")
+            text = response.get("content", "")
+            latency_ms = response.get("latency", 0) * 1000  # Convert seconds to ms
+            
+            score = self._evaluate_single_dict(prompt, model_id, text, latency_ms, weights)
             scores.append(score)
 
         return scores
 
-    def _evaluate_single(
+    def _evaluate_single_dict(
         self,
         prompt: str,
-        response: ModelResponse,
+        model_id: str,
+        text: str,
+        latency_ms: float,
         weights: dict[str, float],
     ) -> EvaluationScore:
         """
-        Evaluate a single response.
+        Evaluate a single response from dict format.
         
         Args:
             prompt: Original prompt.
-            response: Response to evaluate.
+            model_id: Model identifier.
+            text: Response text.
+            latency_ms: Response latency in milliseconds.
             weights: Scoring weights.
         
         Returns:
             EvaluationScore: Evaluation result.
         """
-        text = response.text
-
         # Calculate individual scores
         relevance = self._calculate_relevance(prompt, text)
         clarity = self._calculate_clarity(text)
         hallucination_risk = self._calculate_hallucination_risk(
-            response.latency_ms,
+            latency_ms,
             len(text),
         )
 
@@ -94,7 +102,7 @@ class HeuristicStrategy:
         )
 
         return EvaluationScore(
-            model_id=response.model_id,
+            model_id=model_id,
             relevance=round(relevance, 3),
             clarity=round(clarity, 3),
             hallucination_risk=round(hallucination_risk, 3),
@@ -106,8 +114,33 @@ class HeuristicStrategy:
                 "strategy": "heuristic",
                 "weights": weights,
                 "text_length": len(text),
-                "latency_ms": response.latency_ms,
+                "latency_ms": latency_ms,
             },
+        )
+
+    def _evaluate_single(
+        self,
+        prompt: str,
+        response: ModelResponse,
+        weights: dict[str, float],
+    ) -> EvaluationScore:
+        """
+        Evaluate a single response (legacy method for backward compatibility).
+        
+        Args:
+            prompt: Original prompt.
+            response: Response to evaluate.
+            weights: Scoring weights.
+        
+        Returns:
+            EvaluationScore: Evaluation result.
+        """
+        return self._evaluate_single_dict(
+            prompt,
+            response.model_id,
+            response.text,
+            response.latency_ms,
+            weights,
         )
 
     def _calculate_relevance(self, prompt: str, text: str) -> float:
