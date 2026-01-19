@@ -12,8 +12,8 @@ from fastapi import APIRouter, HTTPException
 
 from src.core.logging import get_logger
 from src.models.runner import ModelRunner
-from src.schemas.prompt import PromptRequest, PromptResponse
 from src.schemas.model import ModelResponse
+from src.schemas.prompt import PromptRequest, PromptResponse
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -55,9 +55,9 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
         model_count=len(request.model_ids),
         use_rag=request.use_rag,
     )
-    
+
     runner = get_model_runner()
-    
+
     # Get target models
     model_ids = request.model_ids
     if not model_ids:
@@ -69,7 +69,7 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
                 status_code=503,
                 detail="No models available. Ensure Ollama is running.",
             )
-    
+
     # RAG context retrieval (if enabled)
     rag_context: str | None = None
     if request.use_rag:
@@ -79,10 +79,10 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
         # rag_result = await rag_engine.retrieve(request.prompt)
         # rag_context = rag_result.assembled_context
         logger.info("RAG enabled but not yet implemented")
-    
+
     # Generate responses in parallel
     generation_params = request.params.model_dump()
-    
+
     async def generate_for_model(model_id: str) -> ModelResponse | None:
         """Generate response for a single model."""
         try:
@@ -99,28 +99,28 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
                 error=str(e),
             )
             return None
-    
+
     # Run all generations in parallel
     tasks = [generate_for_model(mid) for mid in model_ids]
     results = await asyncio.gather(*tasks)
-    
+
     # Filter out failed responses
     responses = [r for r in results if r is not None]
-    
+
     if not responses:
         raise HTTPException(
             status_code=500,
             detail="All model generations failed.",
         )
-    
+
     total_latency = (time.perf_counter() - start_time) * 1000
-    
+
     logger.info(
         "Prompt request completed",
         response_count=len(responses),
         total_latency_ms=round(total_latency, 2),
     )
-    
+
     return PromptResponse(
         prompt=request.prompt,
         responses=responses,

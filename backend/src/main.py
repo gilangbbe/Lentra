@@ -40,12 +40,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         environment=settings.APP_ENV,
         debug=settings.DEBUG,
     )
-    
+
     # TODO: Initialize model adapters
     # TODO: Initialize RAG engine if enabled
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Lentra API")
     # TODO: Cleanup resources
@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=lifespan,
     )
-    
+
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
@@ -76,18 +76,18 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Register routes
     app.include_router(prompt.router, tags=["Prompt"])
     app.include_router(models.router, prefix="/models", tags=["Models"])
     app.include_router(rag.router, prefix="/rag", tags=["RAG"])
     app.include_router(evaluate.router, tags=["Evaluation"])
-    
+
     @app.get("/health", tags=["Health"])
     async def health_check() -> dict[str, str]:
         """Health check endpoint for monitoring."""
         return {"status": "healthy", "service": settings.APP_NAME}
-    
+
     return app
 
 

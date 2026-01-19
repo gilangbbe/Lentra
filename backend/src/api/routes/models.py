@@ -33,12 +33,12 @@ async def list_models() -> ModelListResponse:
         ModelListResponse: List of available models with metadata.
     """
     logger.info("Listing available models")
-    
+
     runner = get_model_runner()
     models = await runner.list_available_models()
-    
+
     logger.info("Models retrieved", count=len(models))
-    
+
     return ModelListResponse(
         models=models,
         total=len(models),
@@ -62,16 +62,16 @@ async def get_model(model_id: str) -> ModelInfo:
         HTTPException: If model not found.
     """
     logger.info("Getting model info", model_id=model_id)
-    
+
     runner = get_model_runner()
     model_info = await runner.get_model_info(model_id)
-    
+
     if model_info is None:
         raise HTTPException(
             status_code=404,
             detail=f"Model '{model_id}' not found",
         )
-    
+
     return model_info
 
 
@@ -89,9 +89,9 @@ async def load_model(model_id: str) -> dict[str, str]:
         Status message.
     """
     logger.info("Loading model", model_id=model_id)
-    
+
     runner = get_model_runner()
-    
+
     try:
         await runner.load_model(model_id)
         return {"status": "loaded", "model_id": model_id}
@@ -117,9 +117,9 @@ async def unload_model(model_id: str) -> dict[str, str]:
         Status message.
     """
     logger.info("Unloading model", model_id=model_id)
-    
+
     runner = get_model_runner()
-    
+
     try:
         await runner.unload_model(model_id)
         return {"status": "unloaded", "model_id": model_id}

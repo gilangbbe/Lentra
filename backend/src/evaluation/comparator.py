@@ -35,7 +35,7 @@ class Comparator:
     - Human Vote: Manual selection
     - Ensemble: Merge multiple outputs
     """
-    
+
     def __init__(self, mode: EvaluationMode | None = None) -> None:
         """
         Initialize the comparator.
@@ -45,9 +45,9 @@ class Comparator:
         """
         self._mode = mode or settings.EVALUATION_MODE
         self._heuristic = HeuristicStrategy()
-        
+
         logger.info("Comparator initialized", mode=self._mode)
-    
+
     async def evaluate(
         self,
         prompt: str,
@@ -70,13 +70,13 @@ class Comparator:
             list[EvaluationScore]: Scores for each response.
         """
         eval_mode = mode or self._mode
-        
+
         logger.info(
             "Evaluating responses",
             mode=eval_mode,
             response_count=len(responses),
         )
-        
+
         if eval_mode == "heuristic":
             return await self._heuristic.evaluate(
                 prompt=prompt,
@@ -107,7 +107,7 @@ class Comparator:
                 responses=responses,
                 weights=weights,
             )
-    
+
     async def _evaluate_embedding(
         self,
         prompt: str,
@@ -118,7 +118,7 @@ class Comparator:
         # TODO: Implement embedding comparison
         logger.warning("Embedding evaluation not implemented, using heuristic")
         return await self._heuristic.evaluate(prompt, responses)
-    
+
     async def _evaluate_llm_judge(
         self,
         prompt: str,
@@ -128,7 +128,7 @@ class Comparator:
         # TODO: Implement LLM judge
         logger.warning("LLM judge not implemented, using heuristic")
         return await self._heuristic.evaluate(prompt, responses)
-    
+
     def get_winner(self, scores: list[EvaluationScore]) -> str | None:
         """
         Get the model ID with the highest score.
@@ -141,14 +141,14 @@ class Comparator:
         """
         if not scores:
             return None
-        
+
         sorted_scores = sorted(
             scores,
             key=lambda s: s.final_score,
             reverse=True,
         )
         return sorted_scores[0].model_id
-    
+
     def get_ranking(self, scores: list[EvaluationScore]) -> list[str]:
         """
         Get model IDs ranked by score.

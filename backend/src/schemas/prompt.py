@@ -11,7 +11,7 @@ from src.schemas.model import ModelResponse
 
 class GenerationParams(BaseModel):
     """Parameters for text generation."""
-    
+
     temperature: float = Field(
         default=0.7,
         ge=0.0,
@@ -54,7 +54,7 @@ class PromptRequest(BaseModel):
             "params": {"temperature": 0.7}
         }
     """
-    
+
     prompt: str = Field(
         ...,
         min_length=1,
@@ -81,7 +81,7 @@ class PromptRequest(BaseModel):
         default=False,
         description="Whether to stream responses.",
     )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -103,7 +103,7 @@ class PromptResponse(BaseModel):
     Each model's response includes the generated text, latency,
     token count, and optional RAG context used.
     """
-    
+
     prompt: str = Field(description="Original prompt submitted.")
     responses: list[ModelResponse] = Field(
         description="Responses from each model."
@@ -115,7 +115,7 @@ class PromptResponse(BaseModel):
     total_latency_ms: float = Field(
         description="Total request latency in milliseconds."
     )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [

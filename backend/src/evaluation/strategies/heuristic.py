@@ -24,7 +24,7 @@ class HeuristicStrategy:
     This is the fastest evaluation method as it requires
     no external model calls.
     """
-    
+
     def __init__(self) -> None:
         """Initialize the heuristic strategy."""
         self._default_weights = {
@@ -32,7 +32,7 @@ class HeuristicStrategy:
             "clarity": 0.30,
             "hallucination": 0.30,
         }
-    
+
     async def evaluate(
         self,
         prompt: str,
@@ -52,13 +52,13 @@ class HeuristicStrategy:
         """
         weights = weights or self._default_weights
         scores = []
-        
+
         for response in responses:
             score = self._evaluate_single(prompt, response, weights)
             scores.append(score)
-        
+
         return scores
-    
+
     def _evaluate_single(
         self,
         prompt: str,
@@ -77,7 +77,7 @@ class HeuristicStrategy:
             EvaluationScore: Evaluation result.
         """
         text = response.text
-        
+
         # Calculate individual scores
         relevance = self._calculate_relevance(prompt, text)
         clarity = self._calculate_clarity(text)
@@ -85,14 +85,14 @@ class HeuristicStrategy:
             response.latency_ms,
             len(text),
         )
-        
+
         # Calculate weighted final score
         final_score = (
             relevance * weights.get("relevance", 0.4) +
             clarity * weights.get("clarity", 0.3) +
             (1 - hallucination_risk) * weights.get("hallucination", 0.3)
         )
-        
+
         return EvaluationScore(
             model_id=response.model_id,
             relevance=round(relevance, 3),
@@ -109,7 +109,7 @@ class HeuristicStrategy:
                 "latency_ms": response.latency_ms,
             },
         )
-    
+
     def _calculate_relevance(self, prompt: str, text: str) -> float:
         """
         Calculate relevance score based on keyword overlap.
@@ -134,19 +134,19 @@ class HeuristicStrategy:
                 "as", "it", "that", "this", "these", "those",
             }
             return {w for w in words if len(w) > 2 and w not in stopwords}
-        
+
         prompt_words = extract_words(prompt)
         response_words = extract_words(text)
-        
+
         if not prompt_words:
             return 0.5  # Neutral if no meaningful words in prompt
-        
+
         overlap = len(prompt_words & response_words)
         coverage = overlap / len(prompt_words)
-        
+
         # Scale and cap at 1.0
         return min(1.0, coverage * 1.5)
-    
+
     def _calculate_clarity(self, text: str) -> float:
         """
         Calculate clarity score based on structure.
@@ -159,36 +159,36 @@ class HeuristicStrategy:
         """
         if not text:
             return 0.0
-        
+
         # Count sentences
         sentence_endings = text.count(".") + text.count("!") + text.count("?")
         sentence_count = max(1, sentence_endings)
-        
+
         # Calculate average sentence length
         word_count = len(text.split())
         avg_sentence_length = word_count / sentence_count
-        
+
         # Optimal sentence length is around 15-20 words
         # Score decreases as we deviate from this
         optimal = 17
         deviation = abs(avg_sentence_length - optimal)
         sentence_score = max(0.0, 1.0 - (deviation / 30))
-        
+
         # Check for paragraph structure
         paragraphs = text.count("\n\n")
         has_structure = paragraphs > 0 or sentence_count > 1
         structure_bonus = 0.1 if has_structure else 0.0
-        
+
         # Check for formatting (lists, etc.)
         has_formatting = any(
             marker in text
             for marker in ["- ", "* ", "1.", "2.", "•"]
         )
         format_bonus = 0.1 if has_formatting else 0.0
-        
+
         clarity = min(1.0, sentence_score + structure_bonus + format_bonus)
         return clarity
-    
+
     def _calculate_hallucination_risk(
         self,
         latency_ms: float,
@@ -210,10 +210,10 @@ class HeuristicStrategy:
         """
         if text_length == 0:
             return 1.0  # Empty response = high risk
-        
+
         # Characters per millisecond
         speed = text_length / max(latency_ms, 1)
-        
+
         # Suspiciously fast (> 10 chars/ms) or slow (< 0.1 chars/ms)
         if speed > 10:
             return 0.3  # Fast might be cached/memorized
@@ -221,7 +221,7 @@ class HeuristicStrategy:
             return 0.4  # Slow might indicate uncertainty
         else:
             return 0.2  # Normal speed = lower risk
-    
+
     def _generate_reasoning(
         self,
         relevance: float,
@@ -240,26 +240,26 @@ class HeuristicStrategy:
             str: Reasoning text.
         """
         parts = []
-        
+
         if relevance >= 0.8:
             parts.append("High relevance to prompt")
         elif relevance >= 0.5:
             parts.append("Moderate relevance")
         else:
             parts.append("Low relevance to prompt")
-        
+
         if clarity >= 0.8:
             parts.append("well-structured response")
         elif clarity >= 0.5:
             parts.append("acceptable structure")
         else:
             parts.append("poor structure")
-        
+
         if hallucination_risk <= 0.2:
             parts.append("low hallucination risk")
         elif hallucination_risk <= 0.4:
             parts.append("moderate hallucination risk")
         else:
             parts.append("elevated hallucination risk")
-        
+
         return "; ".join(parts) + "."

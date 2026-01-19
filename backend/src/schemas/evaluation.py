@@ -21,7 +21,7 @@ class EvaluationScore(BaseModel):
     - hallucination_risk: Likelihood of hallucination
     - final_score: Weighted overall score
     """
-    
+
     model_id: str = Field(description="Model that generated the response.")
     relevance: float = Field(
         ge=0.0,
@@ -51,7 +51,7 @@ class EvaluationScore(BaseModel):
         default_factory=dict,
         description="Additional evaluation data.",
     )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -79,7 +79,7 @@ class EvaluateRequest(BaseModel):
     - human_vote: Manual selection (returns prepared ballot)
     - ensemble: Merge multiple outputs
     """
-    
+
     prompt: str = Field(description="Original prompt.")
     responses: list[ModelResponse] = Field(
         min_length=1,
@@ -111,7 +111,7 @@ class EvaluateRequest(BaseModel):
 
 class EvaluateResponse(BaseModel):
     """Response from evaluation."""
-    
+
     mode: str = Field(description="Evaluation mode used.")
     scores: list[EvaluationScore] = Field(
         description="Scores for each response."
@@ -135,7 +135,7 @@ class EvaluateResponse(BaseModel):
 
 class HumanVoteBallot(BaseModel):
     """Ballot for human voting evaluation."""
-    
+
     ballot_id: str = Field(description="Unique ballot identifier.")
     prompt: str = Field(description="Original prompt.")
     options: list[dict[str, str]] = Field(
@@ -146,7 +146,7 @@ class HumanVoteBallot(BaseModel):
 
 class HumanVoteSubmission(BaseModel):
     """Submission for human vote."""
-    
+
     ballot_id: str = Field(description="Ballot identifier.")
     selected_option: int = Field(
         ge=0,

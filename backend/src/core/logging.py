@@ -24,7 +24,7 @@ def setup_logging() -> None:
     """
     # Determine if we're in development mode
     is_dev = settings.APP_ENV == "development"
-    
+
     # Common processors for all environments
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -32,7 +32,7 @@ def setup_logging() -> None:
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),
     ]
-    
+
     if is_dev:
         # Development: colored console output
         processors: list[Processor] = [
@@ -46,7 +46,7 @@ def setup_logging() -> None:
             structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
         ]
-    
+
     # Configure structlog
     structlog.configure(
         processors=processors,
@@ -57,14 +57,14 @@ def setup_logging() -> None:
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Also configure standard library logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=getattr(logging, settings.LOG_LEVEL),
     )
-    
+
     # Reduce noise from third-party libraries
     for logger_name in ["httpx", "httpcore", "uvicorn.access"]:
         logging.getLogger(logger_name).setLevel(logging.WARNING)

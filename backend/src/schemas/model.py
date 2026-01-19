@@ -17,7 +17,7 @@ class ModelResponse(BaseModel):
     This is the normalized output format that all model adapters
     must return, regardless of the underlying backend.
     """
-    
+
     model_id: str = Field(description="Unique identifier for the model.")
     text: str = Field(description="Generated text response.")
     latency_ms: float = Field(
@@ -48,7 +48,7 @@ class ModelConfig(BaseModel):
     
     Defines which backend adapter to use and any model-specific settings.
     """
-    
+
     id: str = Field(description="Unique model identifier.")
     backend: Literal["ollama", "llama_cpp", "huggingface", "text_gen_webui"] = Field(
         description="Backend adapter to use.",
@@ -65,7 +65,7 @@ class ModelConfig(BaseModel):
         default_factory=dict,
         description="Model-specific parameters.",
     )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -82,7 +82,7 @@ class ModelConfig(BaseModel):
 
 class CharacterVisual(BaseModel):
     """Visual configuration for model character representation."""
-    
+
     type: Literal["2D", "2.5D", "3D"] = Field(
         default="2D",
         description="Visual rendering type.",
@@ -112,7 +112,7 @@ class ModelCharacter(BaseModel):
     Per architecture: visuals are metadata-driven, not hardcoded.
     UI must function without visuals.
     """
-    
+
     name: str = Field(description="Character name.")
     traits: list[str] = Field(
         default_factory=list,
@@ -130,12 +130,12 @@ class ModelInfo(BaseModel):
     
     Returned by GET /models/{id}.
     """
-    
+
     id: str = Field(description="Unique model identifier.")
     backend: str = Field(description="Backend adapter name.")
     name: str = Field(description="Human-readable name.")
     description: str | None = Field(default=None)
-    
+
     # Status
     available: bool = Field(
         default=True,
@@ -145,7 +145,7 @@ class ModelInfo(BaseModel):
         default=False,
         description="Whether model is loaded in memory.",
     )
-    
+
     # Stats
     total_requests: int = Field(
         default=0,
@@ -159,13 +159,13 @@ class ModelInfo(BaseModel):
         default=None,
         description="Last usage timestamp.",
     )
-    
+
     # Character
     character: ModelCharacter | None = Field(
         default=None,
         description="Character definition for UI.",
     )
-    
+
     # Capabilities
     context_length: int = Field(
         default=4096,
@@ -179,6 +179,6 @@ class ModelInfo(BaseModel):
 
 class ModelListResponse(BaseModel):
     """Response for GET /models."""
-    
+
     models: list[ModelInfo] = Field(description="Available models.")
     total: int = Field(description="Total model count.")

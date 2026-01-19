@@ -16,7 +16,7 @@ class DocumentChunk(BaseModel):
     
     Used in RAG retrieval results to show what context was used.
     """
-    
+
     id: str = Field(description="Unique chunk identifier.")
     content: str = Field(description="Text content of the chunk.")
     score: float = Field(
@@ -28,7 +28,7 @@ class DocumentChunk(BaseModel):
         default_factory=dict,
         description="Chunk metadata (source, page, etc.).",
     )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -53,7 +53,7 @@ class RAGQueryRequest(BaseModel):
     Retrieves relevant context from the vector store and
     optionally passes it to specified models.
     """
-    
+
     query: str = Field(
         ...,
         min_length=1,
@@ -84,7 +84,7 @@ class RAGQueryRequest(BaseModel):
 
 class RAGQueryResponse(BaseModel):
     """Response from RAG query."""
-    
+
     query: str = Field(description="Original query.")
     chunks: list[DocumentChunk] = Field(
         description="Retrieved document chunks."
@@ -100,7 +100,7 @@ class RAGQueryResponse(BaseModel):
 
 class DocumentUploadRequest(BaseModel):
     """Request to upload and index a document."""
-    
+
     collection: str = Field(
         default="default",
         description="Collection to add document to.",
@@ -121,7 +121,7 @@ class DocumentUploadRequest(BaseModel):
 
 class DocumentInfo(BaseModel):
     """Information about an indexed document."""
-    
+
     id: str = Field(description="Document identifier.")
     filename: str = Field(description="Original filename.")
     collection: str = Field(description="Collection name.")
@@ -135,7 +135,7 @@ class DocumentInfo(BaseModel):
 
 class CollectionInfo(BaseModel):
     """Information about a RAG collection."""
-    
+
     name: str = Field(description="Collection name.")
     document_count: int = Field(description="Number of documents.")
     chunk_count: int = Field(description="Total chunks.")

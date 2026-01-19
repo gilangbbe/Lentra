@@ -17,7 +17,7 @@ class LentraException(Exception):
         status_code: HTTP status code to return.
         details: Additional error context.
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -28,7 +28,7 @@ class LentraException(Exception):
         self.status_code = status_code
         self.details = details or {}
         super().__init__(self.message)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for JSON response."""
         return {
@@ -40,7 +40,7 @@ class LentraException(Exception):
 
 class ValidationError(LentraException):
     """Raised when input validation fails."""
-    
+
     def __init__(
         self,
         message: str = "Validation failed",
@@ -51,7 +51,7 @@ class ValidationError(LentraException):
 
 class ModelNotFoundError(LentraException):
     """Raised when a requested model is not available."""
-    
+
     def __init__(
         self,
         model_id: str,
@@ -66,7 +66,7 @@ class ModelNotFoundError(LentraException):
 
 class ModelConnectionError(LentraException):
     """Raised when connection to a model backend fails."""
-    
+
     def __init__(
         self,
         backend: str,
@@ -81,7 +81,7 @@ class ModelConnectionError(LentraException):
 
 class RAGError(LentraException):
     """Raised when RAG operations fail."""
-    
+
     def __init__(
         self,
         operation: str,
@@ -97,7 +97,7 @@ class RAGError(LentraException):
 
 class EvaluationError(LentraException):
     """Raised when evaluation/comparison fails."""
-    
+
     def __init__(
         self,
         strategy: str,
@@ -112,7 +112,7 @@ class EvaluationError(LentraException):
 
 class RateLimitExceededError(LentraException):
     """Raised when rate limit is exceeded."""
-    
+
     def __init__(
         self,
         retry_after: int = 60,
