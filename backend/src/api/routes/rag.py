@@ -406,7 +406,7 @@ async def get_rag_status() -> dict[str, Any]:
         "chunk_overlap": settings.RAG_CHUNK_OVERLAP,
         "top_k": settings.RAG_TOP_K,
     }
-    
+
     if settings.RAG_ENABLED:
         try:
             engine = get_rag_engine()
@@ -416,13 +416,13 @@ async def get_rag_status() -> dict[str, Any]:
             status["total_chunks"] = stats.get("total_chunks", 0)
         except Exception:
             status["initialized"] = False
-    
+
     return status
 
 
 class TextIngestRequest(BaseModel):
     """Request to ingest text directly without file upload."""
-    
+
     text: str = Field(
         ...,
         min_length=1,
@@ -472,20 +472,20 @@ async def ingest_text(request: TextIngestRequest) -> DocumentInfo:
             status_code=400,
             detail="RAG is disabled. Enable it in configuration.",
         )
-    
+
     if not request.text.strip():
         raise HTTPException(
             status_code=400,
             detail="Text content cannot be empty.",
         )
-    
+
     logger.info(
         "Processing text ingestion",
         title=request.title,
         text_length=len(request.text),
         collection=request.collection,
     )
-    
+
     try:
         engine = get_rag_engine()
         doc_info = await engine.index_document(
@@ -500,15 +500,15 @@ async def ingest_text(request: TextIngestRequest) -> DocumentInfo:
                 **request.metadata,
             },
         )
-        
+
         logger.info(
             "Text ingested successfully",
             doc_id=doc_info.id,
             chunks=doc_info.chunks,
         )
-        
+
         return doc_info
-    
+
     except RAGError as e:
         logger.error("Text ingestion failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))

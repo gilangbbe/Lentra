@@ -51,11 +51,11 @@ def build_prompt_with_context(
         Complete prompt string for the model.
     """
     parts = []
-    
+
     # Add system prompt if provided
     if system_prompt:
         parts.append(f"System: {system_prompt}\n")
-    
+
     # Build the main content using instruction template or default
     if instruction_prompt and context:
         # Use custom instruction template with placeholders
@@ -76,7 +76,7 @@ Answer:""")
     else:
         # No context, just the user prompt
         parts.append(user_prompt)
-    
+
     return "\n".join(parts)
 
 
@@ -123,7 +123,7 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
     # Determine context: either from RAG retrieval or direct context_text
     rag_context: str | None = None
     retrieved_chunks: list = []
-    
+
     if request.context_text:
         # Direct context provided (bypasses RAG)
         rag_context = request.context_text
