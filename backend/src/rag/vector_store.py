@@ -423,6 +423,67 @@ class FAISSVectorStore:
 
         return list(docs)
 
+    def get_document_info(self, document_id: str) -> dict[str, Any] | None:
+        """Get detailed information about a document.
+        
+        Args:
+            document_id: Document ID to look up.
+            
+        Returns:
+            Document info dict or None if not found.
+        """
+        if document_id not in self._documents:
+            return None
+            
+        indices = self._documents[document_id]
+        if not indices:
+            return None
+            
+        # Get info from the first chunk's metadata
+        first_idx = indices[0]
+        if first_idx >= len(self._metadata):
+            return None
+            
+        meta = self._metadata[first_idx]
+        chunk_metadata = meta.get("metadata", {})
+        
+        # Find the earliest created_at timestamp
+        earliest_created = min(
+            (self._metadata[i].get("created_at", 0) for i in indices if i < len(self._metadata)),
+            default=0
+        )
+        
+        # Get filename from nested metadata.source or top-level source
+        filename = chunk_metadata.get("source") or meta.get("source", "unknown")
+        
+        return {
+            "id": document_id,
+            "filename": filename,
+            "collection": meta.get("collection", "default"),
+            "chunks": len(indices),
+            "indexed_at": earliest_created,
+            "metadata": chunk_metadata,
+        }
+
+    def list_documents_with_info(self, collection: str | None = None) -> list[dict[str, Any]]:
+        """List all documents with full info, optionally filtered by collection.
+        
+        Args:
+            collection: Optional collection to filter by.
+            
+        Returns:
+            List of document info dicts.
+        """
+        doc_ids = self.list_documents(collection)
+        result = []
+        
+        for doc_id in doc_ids:
+            info = self.get_document_info(doc_id)
+            if info:
+                result.append(info)
+                
+        return result
+
     def get_stats(self) -> dict[str, Any]:
         """Get store statistics."""
         return {

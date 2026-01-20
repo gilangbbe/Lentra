@@ -190,20 +190,6 @@ docker-compose -f docker/docker-compose.yml up --build
 - [x] Basic RAG with FAISS
 - [x] Side-by-side comparison UI
 - [x] Evaluation strategies (heuristic, embedding similarity, LLM-as-judge, ensemble)
-- [ ] Character/avatar system
+- [x] Character/avatar system
 - [ ] Additional LLM adapters
 
-## 🤝 Contributing
-
-1. Read [ARCHITECTURE.md](./ARCHITECTURE.md)
-2. Follow coding standards
-3. Write tests for new features
-4. Submit PR with description
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-Built with ❤️ for the local AI community

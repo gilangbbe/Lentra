@@ -376,18 +376,18 @@ class RAGEngine:
     async def list_documents(
         self,
         collection: str | None = None,
-    ) -> list[str]:
+    ) -> list[dict[str, Any]]:
         """
-        List documents in the index.
+        List documents in the index with full info.
         
         Args:
             collection: Filter by collection.
         
         Returns:
-            list[str]: Document IDs.
+            list[dict]: Document info objects.
         """
         await self._ensure_initialized()
-        return self._vector_store.list_documents(collection)
+        return self._vector_store.list_documents_with_info(collection)
 
     async def clear_collection(self, collection: str) -> int:
         """

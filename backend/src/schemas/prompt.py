@@ -40,6 +40,53 @@ class GenerationParams(BaseModel):
         default=None,
         description="Stop sequences.",
     )
+    repeat_penalty: float = Field(
+        default=1.1,
+        ge=1.0,
+        le=2.0,
+        description="Repetition penalty. Higher = less repetition.",
+    )
+    presence_penalty: float = Field(
+        default=0.0,
+        ge=-2.0,
+        le=2.0,
+        description="Presence penalty for new tokens.",
+    )
+    frequency_penalty: float = Field(
+        default=0.0,
+        ge=-2.0,
+        le=2.0,
+        description="Frequency penalty based on token count.",
+    )
+
+
+class RAGParams(BaseModel):
+    """Parameters for RAG (Retrieval-Augmented Generation) behavior."""
+
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Number of chunks to retrieve.",
+    )
+    score_threshold: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum relevance score for chunks.",
+    )
+    collection: str | None = Field(
+        default=None,
+        description="Specific collection to search.",
+    )
+    include_sources: bool = Field(
+        default=True,
+        description="Whether to include source citations in context.",
+    )
+    context_template: str = Field(
+        default="",
+        description="Custom template for assembling context. Use {chunks} placeholder.",
+    )
 
 
 class PromptRequest(BaseModel):
@@ -51,6 +98,7 @@ class PromptRequest(BaseModel):
             "prompt": "Explain quantum computing in simple terms",
             "model_ids": ["llama3.1:8b", "mistral:7b"],
             "use_rag": true,
+            "system_prompt": "You are a helpful assistant.",
             "params": {"temperature": 0.7}
         }
     """
@@ -59,7 +107,15 @@ class PromptRequest(BaseModel):
         ...,
         min_length=1,
         max_length=32768,
-        description="The prompt to send to models.",
+        description="The user prompt/question to send to models.",
+    )
+    system_prompt: str | None = Field(
+        default=None,
+        description="System prompt to set model behavior and context.",
+    )
+    instruction_prompt: str | None = Field(
+        default=None,
+        description="Instruction template. Use {context} and {question} placeholders.",
     )
     model_ids: list[str] = Field(
         default_factory=list,
@@ -69,9 +125,13 @@ class PromptRequest(BaseModel):
         default=False,
         description="Whether to use RAG for context retrieval.",
     )
-    rag_collection: str | None = Field(
+    rag_params: RAGParams = Field(
+        default_factory=RAGParams,
+        description="RAG retrieval parameters.",
+    )
+    context_text: str | None = Field(
         default=None,
-        description="Specific RAG collection to query.",
+        description="Direct context text (bypasses RAG retrieval).",
     )
     params: GenerationParams = Field(
         default_factory=GenerationParams,

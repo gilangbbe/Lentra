@@ -10,8 +10,10 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
+from src.core.config import settings
 from src.core.logging import get_logger
 from src.models.runner import ModelRunner
+from src.rag.engine import get_rag_engine
 from src.schemas.model import ModelResponse
 from src.schemas.prompt import PromptRequest, PromptResponse
 
@@ -28,6 +30,54 @@ def get_model_runner() -> ModelRunner:
     if _model_runner is None:
         _model_runner = ModelRunner()
     return _model_runner
+
+
+def build_prompt_with_context(
+    user_prompt: str,
+    context: str | None,
+    system_prompt: str | None,
+    instruction_prompt: str | None,
+) -> str:
+    """
+    Build the final prompt with system prompt, context, and instruction.
+    
+    Args:
+        user_prompt: The user's question/prompt.
+        context: Retrieved RAG context or direct context.
+        system_prompt: Optional system-level instructions.
+        instruction_prompt: Optional template with placeholders.
+    
+    Returns:
+        Complete prompt string for the model.
+    """
+    parts = []
+    
+    # Add system prompt if provided
+    if system_prompt:
+        parts.append(f"System: {system_prompt}\n")
+    
+    # Build the main content using instruction template or default
+    if instruction_prompt and context:
+        # Use custom instruction template with placeholders
+        main_content = instruction_prompt
+        main_content = main_content.replace("{context}", context)
+        main_content = main_content.replace("{question}", user_prompt)
+        parts.append(main_content)
+    elif context:
+        # Default RAG template
+        parts.append(f"""Use the following context to answer the question. If the context doesn't contain relevant information, say so.
+
+Context:
+{context}
+
+Question: {user_prompt}
+
+Answer:""")
+    else:
+        # No context, just the user prompt
+        parts.append(user_prompt)
+    
+    return "\n".join(parts)
 
 
 @router.post("/prompt", response_model=PromptResponse)
@@ -70,15 +120,53 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
                 detail="No models available. Ensure Ollama is running.",
             )
 
-    # RAG context retrieval (if enabled)
+    # Determine context: either from RAG retrieval or direct context_text
     rag_context: str | None = None
-    if request.use_rag:
-        # TODO: Implement RAG retrieval
-        # from src.rag.engine import RAGEngine
-        # rag_engine = RAGEngine()
-        # rag_result = await rag_engine.retrieve(request.prompt)
-        # rag_context = rag_result.assembled_context
-        logger.info("RAG enabled but not yet implemented")
+    retrieved_chunks: list = []
+    
+    if request.context_text:
+        # Direct context provided (bypasses RAG)
+        rag_context = request.context_text
+        logger.info("Using direct context text", context_length=len(rag_context))
+    elif request.use_rag and settings.RAG_ENABLED:
+        # RAG retrieval
+        try:
+            rag_engine = get_rag_engine()
+            rag_result = await rag_engine.retrieve(
+                query=request.prompt,
+                top_k=request.rag_params.top_k,
+                collection=request.rag_params.collection,
+                score_threshold=request.rag_params.score_threshold,
+            )
+            rag_context = rag_result.assembled_context
+            retrieved_chunks = [
+                {
+                    "content": chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,
+                    "score": chunk.score,
+                    "source": chunk.metadata.get("source", "unknown"),
+                }
+                for chunk in rag_result.chunks
+            ]
+            logger.info(
+                "RAG retrieval successful",
+                chunks_retrieved=len(rag_result.chunks),
+                latency_ms=rag_result.retrieval_latency_ms,
+            )
+        except Exception as e:
+            logger.warning(
+                "RAG retrieval failed, continuing without context",
+                error=str(e),
+            )
+    elif request.use_rag:
+        logger.warning("RAG requested but not enabled in configuration")
+
+    # Build the final prompt with context and system/instruction prompts
+    final_prompt = build_prompt_with_context(
+        user_prompt=request.prompt,
+        context=rag_context,
+        system_prompt=request.system_prompt,
+        instruction_prompt=request.instruction_prompt,
+    )
 
     # Generate responses in parallel
     generation_params = request.params.model_dump()
@@ -88,8 +176,8 @@ async def submit_prompt(request: PromptRequest) -> PromptResponse:
         try:
             return await runner.generate(
                 model_id=model_id,
-                prompt=request.prompt,
-                context=rag_context,
+                prompt=final_prompt,
+                context=None,  # Context already embedded in prompt
                 params=generation_params,
             )
         except Exception as e:

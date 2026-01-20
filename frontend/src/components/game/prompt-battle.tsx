@@ -10,14 +10,16 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, ArrowLeft, Trophy, RotateCcw, Sparkles, BarChart3, ChevronDown } from "lucide-react";
+import { Send, ArrowLeft, Trophy, RotateCcw, Sparkles, BarChart3, ChevronDown, Database, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/use-models";
 import { useCharacterAssignmentStore, type Character3D } from "@/stores/character-assignment-store";
+import { useRAGStore } from "@/stores/rag-store";
 import { BattleStage } from "./battle-stage";
 import { EvaluationSummary } from "./evaluation-score-card";
+import { RAGConfigPanel } from "./rag-config-panel";
 import { GameArenaScene, type SelectedModelWithCharacter } from "./game-arena-scene";
-import type { ModelInfo, ModelResponse, EvaluationMode, EvaluationScore, EvaluateResponse } from "@/types";
+import type { ModelInfo, ModelResponse, EvaluationMode, EvaluationScore, EvaluateResponse, GenerationParams } from "@/types";
 
 interface PromptBattleProps {
   onBack?: () => void;
@@ -41,13 +43,34 @@ const EVALUATION_MODES: { id: EvaluationMode; label: string; description: string
 export function PromptBattle({ onBack, className }: PromptBattleProps) {
   const { models, selectedModelIds } = useModels();
   const { assignments } = useCharacterAssignmentStore();
+  const {
+    ragParams,
+    systemPrompt,
+    instructionPrompt,
+    contextText,
+    status: ragStatus,
+    fetchStatus: fetchRagStatus,
+  } = useRAGStore();
+  
   const [prompt, setPrompt] = useState("");
   const [useRag, setUseRag] = useState(false);
+  const [showRagConfig, setShowRagConfig] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [champions, setChampions] = useState<Champion[]>([]);
   const [winner, setWinner] = useState<string | undefined>();
   const [battleCount, setBattleCount] = useState(0);
+  
+  // Generation parameters (local state, can be adjusted via RAG panel)
+  const [generationParams, setGenerationParams] = useState<GenerationParams>({
+    temperature: 0.7,
+    maxTokens: 1024,
+    topP: 0.9,
+    topK: 40,
+    repeatPenalty: 1.1,
+    presencePenalty: 0,
+    frequencyPenalty: 0,
+  });
   
   // Evaluation state
   const [evaluationMode, setEvaluationMode] = useState<EvaluationMode>("heuristic");
@@ -78,6 +101,11 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
     }
   }, [selectedModels, assignments, champions.length]);
 
+  // Fetch RAG status on mount
+  useEffect(() => {
+    fetchRagStatus();
+  }, [fetchRagStatus]);
+
   const handleSubmit = async () => {
     if (!prompt.trim() || isGenerating) return;
 
@@ -91,13 +119,52 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
     setChampions(prev => prev.map(c => ({ ...c, isGenerating: true, response: undefined })));
 
     try {
+      // Build request with RAG configuration
+      const requestBody: Record<string, unknown> = {
+        prompt: prompt.trim(),
+        model_ids: selectedModelIds,
+        use_rag: useRag && ragStatus?.enabled,
+        params: {
+          temperature: generationParams.temperature,
+          max_tokens: generationParams.maxTokens,
+          top_p: generationParams.topP,
+          top_k: generationParams.topK,
+          repeat_penalty: generationParams.repeatPenalty,
+          presence_penalty: generationParams.presencePenalty,
+          frequency_penalty: generationParams.frequencyPenalty,
+        },
+      };
+
+      // Add system prompt if provided
+      if (systemPrompt?.trim()) {
+        requestBody.system_prompt = systemPrompt.trim();
+      }
+
+      // Add instruction prompt if provided
+      if (instructionPrompt?.trim()) {
+        requestBody.instruction_prompt = instructionPrompt.trim();
+      }
+
+      // Add direct context if provided (bypasses RAG retrieval)
+      if (contextText?.trim()) {
+        requestBody.context_text = contextText.trim();
+      }
+
+      // Add RAG parameters if RAG is enabled
+      if (useRag && ragStatus?.enabled) {
+        requestBody.rag_params = {
+          top_k: ragParams.topK,
+          score_threshold: ragParams.scoreThreshold,
+          collection: ragParams.collection,
+          include_sources: ragParams.includeSources,
+          context_template: ragParams.contextTemplate,
+        };
+      }
+
       const response = await fetch("http://localhost:8000/prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: prompt.trim(),
-          model_ids: selectedModelIds,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -270,11 +337,26 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
               type="checkbox"
               checked={useRag}
               onChange={(e) => setUseRag(e.target.checked)}
-              className="h-4 w-4 rounded border-white/30 text-sky-500 focus:ring-sky-500"
+              disabled={!ragStatus?.enabled && !contextText}
+              className="h-4 w-4 rounded border-white/30 text-sky-500 focus:ring-sky-500 disabled:opacity-50"
             />
             <Sparkles className="h-4 w-4 text-sky-300" />
             <span className="text-sm">Use RAG</span>
           </label>
+
+          {/* RAG Config Toggle */}
+          <button
+            onClick={() => setShowRagConfig(!showRagConfig)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors",
+              showRagConfig
+                ? "bg-sky-500/20 text-sky-400"
+                : "text-white/70 hover:text-white hover:bg-white/10"
+            )}
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Config</span>
+          </button>
 
           <div className="flex items-center gap-2 text-white/70">
             <Trophy className="w-4 h-4 text-yellow-400" />
@@ -289,6 +371,25 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
           </button>
         </div>
       </header>
+
+      {/* RAG Configuration Panel */}
+      <AnimatePresence>
+        {showRagConfig && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="relative z-40 px-4 py-2"
+          >
+            <RAGConfigPanel
+              generationParams={generationParams}
+              onGenerationParamsChange={(params) => 
+                setGenerationParams(prev => ({ ...prev, ...params }))
+              }
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Battle stage */}
       <div className="relative z-10 flex-1 overflow-auto pb-40">
@@ -395,6 +496,24 @@ export function PromptBattle({ onBack, className }: PromptBattleProps) {
 
           {/* Input area */}
           <div className="relative">
+            {/* Context/RAG indicator */}
+            {(contextText || (useRag && ragStatus?.enabled)) && (
+              <div className="absolute -top-8 left-0 flex items-center gap-2">
+                {contextText && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <Database className="w-3 h-3" />
+                    Context: {contextText.length} chars
+                  </span>
+                )}
+                {useRag && ragStatus?.enabled && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    <Sparkles className="w-3 h-3" />
+                    RAG: Top {ragParams.topK}
+                  </span>
+                )}
+              </div>
+            )}
+            
             <div className="absolute -inset-1 bg-gradient-to-r from-sky-500/30 to-blue-600/30 rounded-2xl blur" />
             <div className="relative flex items-center gap-3 p-2 rounded-xl bg-slate-900/90 backdrop-blur-sm border border-white/20">
               <input

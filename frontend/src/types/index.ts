@@ -73,6 +73,20 @@ export interface GenerationParams {
   topP?: number;
   topK?: number;
   stop?: string[];
+  repeatPenalty?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+}
+
+/**
+ * RAG retrieval parameters.
+ */
+export interface RAGParams {
+  topK?: number;
+  scoreThreshold?: number;
+  collection?: string;
+  includeSources?: boolean;
+  contextTemplate?: string;
 }
 
 /**
@@ -80,9 +94,12 @@ export interface GenerationParams {
  */
 export interface PromptRequest {
   prompt: string;
+  systemPrompt?: string;
+  instructionPrompt?: string;
   modelIds?: string[];
   useRag?: boolean;
-  ragCollection?: string;
+  ragParams?: RAGParams;
+  contextText?: string;
   params?: GenerationParams;
   stream?: boolean;
 }
@@ -131,6 +148,55 @@ export interface RagQueryResponse {
   totalChunks: number;
   assembledContext: string;
   retrievalLatencyMs: number;
+}
+
+/**
+ * Document information.
+ */
+export interface DocumentInfo {
+  id: string;
+  filename: string;
+  collection: string;
+  chunks: number;
+  indexedAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * RAG collection information.
+ */
+export interface CollectionInfo {
+  name: string;
+  documentCount: number;
+  chunkCount: number;
+  createdAt: string;
+  embeddingModel: string;
+}
+
+/**
+ * RAG status response.
+ */
+export interface RAGStatus {
+  enabled: boolean;
+  initialized: boolean;
+  embeddingModel: string;
+  chunkSize: number;
+  chunkOverlap: number;
+  topK: number;
+  totalDocuments?: number;
+  totalChunks?: number;
+}
+
+/**
+ * Text ingest request.
+ */
+export interface TextIngestRequest {
+  text: string;
+  title?: string;
+  collection?: string;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  metadata?: Record<string, unknown>;
 }
 
 // =============================================================================

@@ -7,6 +7,7 @@ Handles endpoints for RAG (Retrieval-Augmented Generation) operations.
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 from src.core.config import settings
 from src.core.exceptions import RAGError
@@ -387,3 +388,130 @@ async def get_rag_stats() -> dict[str, Any]:
     except RAGError as e:
         logger.error("Failed to get stats", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/status")
+async def get_rag_status() -> dict[str, Any]:
+    """
+    Get RAG system status and configuration.
+    
+    Returns:
+        Status indicating if RAG is enabled and initialized.
+    """
+    status = {
+        "enabled": settings.RAG_ENABLED,
+        "initialized": False,
+        "embedding_model": settings.EMBEDDING_MODEL,
+        "chunk_size": settings.RAG_CHUNK_SIZE,
+        "chunk_overlap": settings.RAG_CHUNK_OVERLAP,
+        "top_k": settings.RAG_TOP_K,
+    }
+    
+    if settings.RAG_ENABLED:
+        try:
+            engine = get_rag_engine()
+            stats = engine.get_stats()
+            status["initialized"] = True
+            status["total_documents"] = stats.get("total_documents", 0)
+            status["total_chunks"] = stats.get("total_chunks", 0)
+        except Exception:
+            status["initialized"] = False
+    
+    return status
+
+
+class TextIngestRequest(BaseModel):
+    """Request to ingest text directly without file upload."""
+    
+    text: str = Field(
+        ...,
+        min_length=1,
+        description="Text content to index.",
+    )
+    title: str = Field(
+        default="Untitled",
+        description="Title/name for the document.",
+    )
+    collection: str = Field(
+        default="default",
+        description="Collection to add document to.",
+    )
+    chunk_size: int = Field(
+        default=512,
+        ge=100,
+        le=2000,
+        description="Chunk size for splitting.",
+    )
+    chunk_overlap: int = Field(
+        default=50,
+        ge=0,
+        le=500,
+        description="Overlap between chunks.",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional metadata.",
+    )
+
+
+@router.post("/ingest", response_model=DocumentInfo)
+async def ingest_text(request: TextIngestRequest) -> DocumentInfo:
+    """
+    Ingest text content directly (without file upload).
+    
+    Useful for pasting documents, notes, or context directly.
+    
+    Args:
+        request: Text content and metadata.
+    
+    Returns:
+        DocumentInfo: Information about the indexed document.
+    """
+    if not settings.RAG_ENABLED:
+        raise HTTPException(
+            status_code=400,
+            detail="RAG is disabled. Enable it in configuration.",
+        )
+    
+    if not request.text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Text content cannot be empty.",
+        )
+    
+    logger.info(
+        "Processing text ingestion",
+        title=request.title,
+        text_length=len(request.text),
+        collection=request.collection,
+    )
+    
+    try:
+        engine = get_rag_engine()
+        doc_info = await engine.index_document(
+            content=request.text,
+            filename=f"{request.title}.txt",
+            collection=request.collection,
+            chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
+            metadata={
+                "source_type": "direct_text",
+                "title": request.title,
+                **request.metadata,
+            },
+        )
+        
+        logger.info(
+            "Text ingested successfully",
+            doc_id=doc_info.id,
+            chunks=doc_info.chunks,
+        )
+        
+        return doc_info
+    
+    except RAGError as e:
+        logger.error("Text ingestion failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error("Unexpected error in text ingestion", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to ingest text: {e}")
