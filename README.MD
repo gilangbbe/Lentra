@@ -193,3 +193,11 @@ docker-compose -f docker/docker-compose.yml up --build
 - [x] Character/avatar system
 - [ ] Additional LLM adapters
 
+## Credit
+All 3D models featured in this project are the property of their respective creators and are not owned by me. These assets were obtained from Sketchfab and are used in accordance with their Creative Commons Attribution licenses. Full credit is provided to the original authors via the links below:
+Skull Knight:
+https://sketchfab.com/3d-models/skull-knight-e81fbf68b4c84f889f2b48df593daaa2
+Lizard Wizard:
+https://sketchfab.com/3d-models/lizard-wizard-4a36fcde390f42b1957b79fd8c35146f
+Floating Island Stage:
+https://sketchfab.com/3d-models/floating-island-stage-d2855c10e9944c89892bb49a5973435f
